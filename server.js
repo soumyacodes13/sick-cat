@@ -16,10 +16,10 @@ app.use("/api/songs",    require("./routes/songRoutes"));
 app.use("/api/auth",     require("./routes/authRoutes"));
 app.use("/api/memories", require("./routes/memoryRoutes"));
 
-// Serve frontend in production
+// Serve frontend in production (Express 5 requires named wildcard)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "client/dist")));
-  app.get("*", (req, res) => {
+  app.get("/{*path}", (req, res) => {
     res.sendFile(path.join(__dirname, "client/dist", "index.html"));
   });
 }
