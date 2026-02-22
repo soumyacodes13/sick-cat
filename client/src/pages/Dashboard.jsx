@@ -178,7 +178,7 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
 const TABS = [
   { key: "chat",   label: "Chat",   icon: "💬" },
   { key: "search", label: "Search", icon: "🔍" },
-  { key: "mood",   label: "Mood",   icon: "🌊" },
+  // { key: "mood",   label: "Mood",   icon: "🌊" },
 ].filter(tab => tab.key !== "chat" || catMode);
 
   const CAT_COLORS_QUICK = ["#c4956a","#e8d5b7","#4a4a6a","#e07a3a","#c4808a","#8a9ab0"];
@@ -237,7 +237,7 @@ const TABS = [
                 </div>
                 {activeTab === "chat"   && <SoftChat onSave={saveSong} onMoodDetected={setChatMood} platform={platform} />}
                 {activeTab === "search" && <SearchSection onSave={saveSong} platform={platform} />}
-                {activeTab === "mood"   && <MoodSection onSave={saveSong} platform={platform} />}
+                {/* {activeTab === "mood"   && <MoodSection onSave={saveSong} platform={platform} />} */}
               </div>
 
               

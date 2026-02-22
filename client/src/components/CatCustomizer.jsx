@@ -122,7 +122,7 @@ export default function CatCustomizer({ catColor, setCatColor, accessory, setAcc
         </div>
       </div>
 
-      {/* Unlockable animations */}
+      {/* Unlockable animations
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <p style={{ fontSize: "0.72rem", color: "#a08c7a", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
@@ -165,7 +165,7 @@ export default function CatCustomizer({ catColor, setCatColor, accessory, setAcc
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
