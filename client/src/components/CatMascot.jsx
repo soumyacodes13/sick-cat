@@ -19,6 +19,7 @@ export default function CatMascot({
   accessory = "none",
   visible = true,
   happiness = 70,
+  onWake,
 }) {
   const [animTick, setAnimTick] = useState(0);
   const [bubble, setBubble] = useState(null);
@@ -47,6 +48,7 @@ export default function CatMascot({
   const handleClick = useCallback(() => {
     const seq = CLICK_SEQUENCES[clickCount % CLICK_SEQUENCES.length];
     setClickCount(c => c + 1);
+    onWake?.();
     setClickState(seq.state);
     setBubble(seq.bubble);
 

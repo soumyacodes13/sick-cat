@@ -81,9 +81,11 @@ const COZY_STYLES = `
   @media(min-width:1024px) { .main-grid { grid-template-columns: 1fr 280px 300px !important; } }
 `;
 
-function useCatState(playlist, isPlaying, chatMood, lastAction, inactiveSecs) {
+function useCatState(playlist, isPlaying, chatMood, lastAction, inactiveSecs, ambiencePlaying, forceAwake) {
+  if (forceAwake) return "happy";
   if (inactiveSecs > 60) return "sleeping";
   if (inactiveSecs > 30) return "yawning";
+  if (ambiencePlaying) return "sitting";
   if (chatMood === "sad") return "sitting";
   if (isPlaying) return "dancing";
   if (lastAction === "add") return "happy";
@@ -96,6 +98,8 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
   const [playlist, setPlaylist] = useState([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("chat");
+  const [ambiencePlaying, setAmbiencePlaying] = useState(false);
+  const [forceAwake, setForceAwake] = useState(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [lastAction, setLastAction] = useState(null);
@@ -104,7 +108,7 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
   const lastActivityRef = useRef(Date.now());
   const actionTimerRef = useRef(null);
 
-  const catState = useCatState(playlist, isPlaying, chatMood, lastAction, inactiveSecs);
+  const catState = useCatState(playlist, isPlaying, chatMood, lastAction, inactiveSecs, ambiencePlaying, forceAwake);
   const catHappiness = Math.min(100, Math.max(10,
     playlist.length * 7 + (isPlaying ? 22 : 0) + (chatMood === "sad" ? -10 : chatMood ? 12 : 0)
   ));
@@ -127,7 +131,10 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
       clearInterval(iv);
     };
   }, [catMode]);
-
+  // Hide chat function
+  useEffect(() => {
+    if (!catMode && activeTab === "chat") setActiveTab("search");
+  }, [catMode]);
   // Audio play detection — only when cat mode is on
   useEffect(() => {
     if (!catMode) return;
@@ -168,11 +175,11 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
     catch (e) { console.error(e); }
   };
 
-  const TABS = [
-    { key: "chat",   label: "Chat",   icon: "💬" },
-    { key: "search", label: "Search", icon: "🔍" },
-    { key: "mood",   label: "Mood",   icon: "🌊" },
-  ];
+const TABS = [
+  { key: "chat",   label: "Chat",   icon: "💬" },
+  { key: "search", label: "Search", icon: "🔍" },
+  { key: "mood",   label: "Mood",   icon: "🌊" },
+].filter(tab => tab.key !== "chat" || catMode);
 
   const CAT_COLORS_QUICK = ["#c4956a","#e8d5b7","#4a4a6a","#e07a3a","#c4808a","#8a9ab0"];
   const STATE_LABEL = {
@@ -191,13 +198,14 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
           <div className="fi" style={{ marginBottom:28, display:"flex", alignItems:"flex-start", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
             <div>
               <p style={{ fontSize:"0.7rem", color:"var(--text-light)", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", marginBottom:4 }}>
-                🎵 Your cozy corner
+                🎵
+                {/* Your cozy corner */}
               </p>
               <h1 className="lora" style={{ fontSize:"clamp(1.7rem,4vw,2.5rem)", fontWeight:600, color:"var(--text)", lineHeight:1.15, margin:0 }}>
                 Welcome back 🌙
               </h1>
               <p style={{ color:"var(--text-mid)", fontSize:"0.88rem", marginTop:4 }}>
-                What's the vibe today?
+                {/* What's the vibe today? */}
               </p>
             </div>
             <button onClick={() => setCatMode(v => !v)} className={`cat-toggle ${catMode ? "on" : ""}`}>
@@ -254,7 +262,7 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
                 </div>
               )}
 
-              <div className="fi3"><AmbiencePlayer /></div>
+              <div className="fi3"><AmbiencePlayer onPlayingChange={setAmbiencePlaying} /></div>
             </div>
 
             {/* MIDDLE: Cat + Stats */}
@@ -270,9 +278,9 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
                     </span>
                   </div>
                   <div style={{ display:"flex", justifyContent:"center", padding:"14px 0 8px" }}>
-                    <CatMascot catState={catState} catColor={catColor} accessory={accessory} visible happiness={catHappiness} />
+                    <CatMascot catState={catState} catColor={catColor} accessory={accessory} visible happiness={catHappiness} onWake={() => { lastActivityRef.current = Date.now(); setInactiveSecs(0); setForceAwake(true); setTimeout(() => setForceAwake(false), 2000);}} />
                   </div>
-                  <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
+                  {/* <div style={{ display:"flex", justifyContent:"center", gap:6, marginTop:8 }}>
                     {CAT_COLORS_QUICK.map(c => (
                       <button key={c} onClick={() => setCatColor(c)} style={{
                         width:22, height:22, borderRadius:"50%", background:c, cursor:"pointer",
@@ -294,7 +302,7 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
                         {lbl}
                       </button>
                     ))}
-                  </div>
+                  </div> */}
                 </div>
               )}
 

@@ -105,12 +105,13 @@ function createCafeNode(ctx) {
   return { source, output: gainNode };
 }
 
-export default function AmbiencePlayer() {
+export default function AmbiencePlayer({ onPlayingChange }) {
   const [active, setActive] = useState(null);
   const [volume, setVolume] = useState(0.5);
   const ctxRef = useRef(null);
   const nodesRef = useRef({});
   const masterGainRef = useRef(null);
+
 
   const getCtx = () => {
     if (!ctxRef.current) {
