@@ -53,7 +53,7 @@ export default function Home({ darkMode, catMode,setCatMode }) {
 
         {/* Subtext */}
         <p style={{ animation:"fadeUp 0.6s 0.35s ease both", opacity:0, color:mid, fontSize:"1rem", maxWidth:420, lineHeight:1.7, marginBottom:36 }}>
-          Pretty mid song player ig
+          Pretty mid song player
         </p>
 
         {/* CTAs */}
