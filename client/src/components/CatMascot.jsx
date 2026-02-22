@@ -4,13 +4,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 // Click states: poke | surprised | annoyed | playful | heart
 
 const CLICK_SEQUENCES = [
-  { state: "poke",      bubble: "Hey! 👋",         duration: 1800 },
-  { state: "surprised", bubble: "Whoa! 😲",         duration: 1600 },
-  { state: "playful",   bubble: "Hehe~ 😸",         duration: 2000 },
-  { state: "annoyed",   bubble: "Mrrow! 😾",        duration: 2200 },
-  { state: "heart",     bubble: "♡ purr ♡",        duration: 2000 },
-  { state: "poke",      bubble: "Again?! 😤",       duration: 1800 },
-  { state: "dizzy",     bubble: "...dizzy 😵",      duration: 2400 },
+  { state: "poke",         duration: 1800 },
+  { state: "surprised",         duration: 1600 },
+  { state: "playful",           duration: 2000 },
+  { state: "annoyed",           duration: 2200 },
+  { state: "heart",            duration: 2000 },
+  { state: "poke",           duration: 1800 },
+  { state: "dizzy",          duration: 2400 },
 ];
 
 export default function CatMascot({
