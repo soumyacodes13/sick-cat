@@ -91,7 +91,7 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
         }
         .nav-link-cozy::after {
           content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px;
-          background: linear-gradient(90deg, #e8a87c, #e8909a); border-radius: 2px;
+          background: linear-gradient(90deg, #f5c842, #e8a020); border-radius: 2px;
           transform: scaleX(0); transition: transform 0.2s;
         }
         .nav-link-cozy.active::after { transform: scaleX(1); }
@@ -118,8 +118,12 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
         transition: "background 0.3s, border-color 0.3s",
       }}>
         <Link to="/" style={{ fontFamily:"Nunito,sans-serif", fontWeight:900, fontSize:"1.1rem", color:logoColor, textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>
-          <span style={{ fontSize:20 }}>🐱</span>
-          Meow<span style={{ color:"#e8909a" }}>sic</span>
+
+          <span style={{ fontSize: 20 }}>{catMode ? "🐱" : "🌻"}</span>
+          {catMode
+            ? <>Meow<span style={{ color: "#e8909a" }}>sic</span></>
+            : <>Music<span style={{ color: "#e8a020" }}> V</span></>
+          }
         </Link>
 
         {/* Desktop links */}
@@ -139,7 +143,7 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
           <Toggle on={darkMode} onToggle={() => setDarkMode(v=>!v)} label="Dark" icon="🌙" darkMode={darkMode} />
 
           {/* Cat mode + Player toggle — hidden on home */}
-          {!isHome && token && (
+          {token && (
             <>
               <Toggle on={catMode}    onToggle={() => setCatMode(v=>!v)}    label="Cat"    icon="🐱" darkMode={darkMode} />
               <Toggle on={showPlayer} onToggle={() => setShowPlayer(v=>!v)} label="Player" icon="🎵" darkMode={darkMode} />
@@ -159,7 +163,7 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
                   </p>
                   {PLATFORM_OPTIONS.map(opt => (
                     <button key={opt.value} className="popt"
-                      style={{ background: platform===opt.value ? (darkMode?"rgba(232,168,124,0.15)":"rgba(232,168,124,0.12)") : "transparent",
+                      style={{ background: platform===opt.value ? (darkMode?"rgba(245,200,66,0.15)":"rgba(245,200,66,0.12)") : "transparent",
                                color: platform===opt.value ? "#c4956a" : (darkMode?"#b8a090":"#9c8070") }}
                       onClick={() => { setPlatform(opt.value); setDropOpen(false); }}>
                       {opt.emoji} {opt.label}
@@ -204,7 +208,7 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
           {/* Toggles in mobile */}
           <div style={{ display:"flex", flexDirection:"column", gap:14, alignItems:"flex-start" }}>
             <Toggle on={darkMode} onToggle={() => setDarkMode(v=>!v)} label="Dark Mode" icon="🌙" darkMode={darkMode} />
-            {!isHome && token && (
+            {token && (
               <>
                 <Toggle on={catMode}    onToggle={() => setCatMode(v=>!v)}    label="Cat Mode"    icon="🐱" darkMode={darkMode} />
                 <Toggle on={showPlayer} onToggle={() => setShowPlayer(v=>!v)} label="Music Player" icon="🎵" darkMode={darkMode} />
@@ -219,8 +223,8 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
                 <button key={opt.value} onClick={() => setPlatform(opt.value)}
                   style={{
                     padding:"6px 14px", borderRadius:20, fontSize:"0.8rem", cursor:"pointer",
-                    border:`1.5px solid ${platform===opt.value?"#e8a87c":btnBorder}`,
-                    background: platform===opt.value?(darkMode?"rgba(232,168,124,0.15)":"rgba(232,168,124,0.1)"):"transparent",
+                    border:`1.5px solid ${platform===opt.value?"#f5c842":btnBorder}`,
+                    background: platform===opt.value?(darkMode?"rgba(245,200,66,0.15)":"rgba(245,200,66,0.1)"):"transparent",
                     color: platform===opt.value?"#c4956a":btnColor,
                     fontWeight:700, fontFamily:"Nunito,sans-serif",
                   }}>

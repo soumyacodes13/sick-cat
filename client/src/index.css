@@ -2,28 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Light mode (default) ── */
+/* ── Light mode ── */
 :root {
-  --bg:         #fdf6ed;
-  --card:       #fffaf3;
-  --border:     rgba(196,165,140,0.25);
-  --text:       #6b5344;
-  --text-mid:   #9c8070;
-  --text-light: #c4a882;
-  --shadow:     0 2px 12px rgba(180,140,110,0.09);
+  --bg:           #fdf9ed;
+  --card:         #fffdf0;
+  --border:       rgba(196,165,80,0.22);
+  --text:         #5c4a1e;
+  --text-mid:     #9c8040;
+  --text-light:   #c4a840;
+  --shadow:       0 2px 12px rgba(180,140,40,0.09);
+  --accent1:      #f5c842;
+  --accent2:      #e8a020;
+}
+
+/* Sunflower (default) */
+:root {
+  --accent1: #f5c842;
+  --accent2: #e8a020;
+  --card:    #fffdf0;
+  --border:  rgba(196,165,80,0.22);
+}
+
+/* Cat mode — cozy rose/peach */
+html.catmode {
+  --accent1: #e8a87c;
+  --accent2: #e8909a;
+  --card:    #fffaf3;
+  --border:  rgba(196,165,140,0.25);
 }
 
 /* ── Dark mode ── */
 html.dark {
-  --bg:         #1a160e;
-  --card:       #241e12;
-  --border:     rgba(100,80,40,0.4);
-  --text:       #e8d8c0;
-  --text-mid:   #b8a080;
-  --text-light: #8a7060;
-  --shadow:     0 2px 12px rgba(0,0,0,0.35);
+  --bg:           #1a1608;
+  --card:         #231e08;
+  --border:       rgba(120,100,20,0.4);
+  --text:         #f0e4b0;
+  --text-mid:     #c8a840;
+  --text-light:   #8a7020;
+  --shadow:       0 2px 12px rgba(0,0,0,0.4);
+  --accent1:      #d4a820;
+  --accent2:      #b88010;
 }
 
-html.dark body { background: #1a160e; color: #e8d8c0; }
+html.dark body { background: #1a1608; color: #f0e4b0; }
 
-body { background: var(--bg); color: var(--text); transition: background 0.3s, color 0.3s; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s, color 0.3s;
+}

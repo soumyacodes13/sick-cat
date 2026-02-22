@@ -1,102 +1,136 @@
 import { useNavigate } from "react-router-dom";
 
-export default function Home({ darkMode }) {
+export default function Home({ darkMode, catMode }) {
   const navigate = useNavigate();
 
+  const bg   = darkMode ? "#1a1608" : "#fdf9ed";
+  const text = darkMode ? "#f0e4b0" : "#5c4a1e";
+  const mid  = darkMode ? "#c8a840" : "#9c8040";
+
   return (
-    <div className={`min-h-screen font-nunito overflow-hidden relative transition-colors duration-300 ${darkMode ? "bg-[#1a160e]" : "bg-cream"}`}>
+    <div style={{ minHeight: "100vh", background: bg, fontFamily: "Nunito, sans-serif", overflow: "hidden", position: "relative", transition: "background 0.3s" }}>
 
-      {/* ── Background blobs (position absolute, no scroll lag) ── */}
-      <div className="absolute top-[-80px] left-[-80px] w-[500px] h-[500px] rounded-full bg-peach/20 blur-3xl pointer-events-none" />
-      <div className="absolute top-[200px] right-[-100px] w-[400px] h-[400px] rounded-full bg-rose/15 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-60px] left-[30%] w-[350px] h-[350px] rounded-full bg-sage/15 blur-3xl pointer-events-none" />
+      {/* Sunflower background blobs */}
+      <div style={{ position:"absolute", top:-100, left:-100, width:500, height:500, borderRadius:"50%", background:"rgba(245,200,66,0.12)", filter:"blur(60px)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", bottom:-80, right:-80, width:400, height:400, borderRadius:"50%", background:"rgba(232,160,32,0.1)", filter:"blur(50px)", pointerEvents:"none" }} />
+      <div style={{ position:"absolute", top:"40%", right:"5%", width:300, height:300, borderRadius:"50%", background:"rgba(101,163,13,0.06)", filter:"blur(40px)", pointerEvents:"none" }} />
 
-      {/* ── Decorative floating elements ── */}
-      <div className="absolute top-32 left-[8%] text-4xl opacity-20 select-none pointer-events-none animate-bounce" style={{ animationDuration: "6s" }}>🎵</div>
-      <div className="absolute top-48 right-[10%] text-3xl opacity-15 select-none pointer-events-none animate-bounce" style={{ animationDuration: "8s", animationDelay: "1s" }}>🎶</div>
-      <div className="absolute bottom-32 left-[15%] text-2xl opacity-15 select-none pointer-events-none animate-bounce" style={{ animationDuration: "7s", animationDelay: "2s" }}>🍃</div>
-      <div className="absolute bottom-48 right-[12%] text-3xl opacity-10 select-none pointer-events-none animate-bounce" style={{ animationDuration: "9s", animationDelay: "0.5s" }}>☁️</div>
+      {/* Decorative sunflower emoji elements */}
+      <div style={{ position:"absolute", top:120, left:"6%", fontSize:40, opacity:0.15, pointerEvents:"none", animation:"floatA 6s ease-in-out infinite" }}>{catMode ? "🐱" : "🌻"}</div>
+      <div style={{ position:"absolute", top:200, right:"8%", fontSize:30, opacity:0.12, pointerEvents:"none", animation:"floatB 8s ease-in-out infinite" }}>{catMode ? "🐾" : "🌻"}</div>
+      <div style={{ position:"absolute", bottom:160, left:"12%", fontSize:24, opacity:0.1, pointerEvents:"none", animation:"floatA 7s 1s ease-in-out infinite" }}>{catMode ? "😸" : "🌿"}</div>
+      <div style={{ position:"absolute", bottom:220, right:"14%", fontSize:28, opacity:0.1, pointerEvents:"none", animation:"floatB 9s ease-in-out infinite" }}>{catMode ? "✨" : "🌾"}</div>
+      {/* Hero content */}
+      <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center", padding:"6rem 1.5rem 4rem", position:"relative", zIndex:1 }}>
 
-      {/* ── Hero content ── */}
-      <div className="relative z-10 flex flex-col items-center justify-center text-center min-h-screen px-6 pt-24 pb-16">
-
-        {/* Eyebrow tag */}
-        <div className="animate-[fadeUp_0.6s_0.1s_ease_both] opacity-0 mb-6">
-          <span className="inline-flex items-center gap-2 bg-white/80 border border-sand/30 text-muted text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-peach inline-block" />
+        {/* Eyebrow */}
+        <div style={{ animation:"fadeUp 0.6s 0.1s ease both", opacity:0, marginBottom:24 }}>
+          <span style={{
+            display:"inline-flex", alignItems:"center", gap:8,
+            background: darkMode ? "rgba(245,200,66,0.1)" : "rgba(255,255,255,0.8)",
+            border:`1px solid rgba(245,200,66,0.35)`,
+            color: mid, fontSize:"0.72rem", fontWeight:800,
+            letterSpacing:"0.1em", textTransform:"uppercase",
+            padding:"8px 18px", borderRadius:50,
+          }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:"#f5c842", display:"inline-block" }} />
             Your cozy music corner
           </span>
         </div>
 
         {/* Headline */}
-        <h1 className="animate-[fadeUp_0.6s_0.2s_ease_both] opacity-0 font-lora text-5xl md:text-6xl lg:text-7xl font-semibold text-bark leading-tight max-w-3xl mb-6">
-          A cozy space for your{" "}
-          <span className="bg-gradient-to-r from-peach via-rose to-[#b8a8d8] bg-clip-text text-transparent">
+        <h1 style={{
+          animation:"fadeUp 0.6s 0.2s ease both", opacity:0,
+          fontFamily:"Lora, serif", fontSize:"clamp(2.4rem, 6vw, 4rem)",
+          fontWeight:600, color: text, lineHeight:1.2,
+          maxWidth:700, marginBottom:20,
+        }}>
+          A sunny space for your{" "}
+          <span style={{ background:"linear-gradient(135deg, #f5c842, #e8a020)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
             music & memories
           </span>
         </h1>
 
         {/* Subtext */}
-        <p className="animate-[fadeUp_0.6s_0.35s_ease_both] opacity-0 text-muted text-lg max-w-md leading-relaxed mb-10">
+        <p style={{ animation:"fadeUp 0.6s 0.35s ease both", opacity:0, color:mid, fontSize:"1rem", maxWidth:420, lineHeight:1.7, marginBottom:36 }}>
           Discover songs by mood. Build playlists. Let your cat companion vibe along with you.
         </p>
 
-        {/* CTA buttons */}
-        <div className="animate-[fadeUp_0.6s_0.5s_ease_both] opacity-0 flex gap-4 flex-wrap justify-center">
-          <button
-            onClick={() => navigate("/music")}
-            className="bg-gradient-to-r from-peach to-rose text-white font-bold px-8 py-3.5 rounded-full shadow-lg shadow-peach/30 hover:shadow-peach/50 hover:-translate-y-0.5 transition-all duration-200 text-sm"
+        {/* CTAs */}
+        <div style={{ animation:"fadeUp 0.6s 0.5s ease both", opacity:0, display:"flex", gap:14, flexWrap:"wrap", justifyContent:"center", marginBottom:48 }}>
+          <button onClick={() => navigate("/music")} style={{
+            background:"linear-gradient(135deg, #f5c842, #e8a020)",
+            color:"#5c4a1e", border:"none", fontWeight:800,
+            padding:"13px 32px", borderRadius:50, fontSize:"0.92rem",
+            cursor:"pointer", fontFamily:"Nunito, sans-serif",
+            boxShadow:"0 6px 20px rgba(245,200,66,0.4)",
+            transition:"transform 0.2s, box-shadow 0.2s",
+          }}
+            onMouseEnter={e => { e.target.style.transform="translateY(-2px)"; e.target.style.boxShadow="0 10px 28px rgba(245,200,66,0.5)"; }}
+            onMouseLeave={e => { e.target.style.transform=""; e.target.style.boxShadow="0 6px 20px rgba(245,200,66,0.4)"; }}
           >
             Explore Music 🎧
           </button>
-          <button
-            onClick={() => navigate("/games")}
-            className="bg-white/80 border border-sand/40 text-bark font-bold px-8 py-3.5 rounded-full hover:bg-white hover:-translate-y-0.5 transition-all duration-200 text-sm shadow-sm"
+          <button onClick={() => navigate("/games")} style={{
+            background: darkMode ? "rgba(245,200,66,0.1)" : "rgba(255,255,255,0.8)",
+            border:"1.5px solid rgba(245,200,66,0.4)", color:text,
+            fontWeight:800, padding:"13px 32px", borderRadius:50, fontSize:"0.92rem",
+            cursor:"pointer", fontFamily:"Nunito, sans-serif",
+            transition:"transform 0.2s",
+          }}
+            onMouseEnter={e => e.target.style.transform="translateY(-2px)"}
+            onMouseLeave={e => e.target.style.transform=""}
           >
             Customize Cat 🐱
           </button>
         </div>
 
         {/* Feature pills */}
-        <div className="animate-[fadeUp_0.6s_0.65s_ease_both] opacity-0 flex gap-3 flex-wrap justify-center mt-12">
+        <div style={{ animation:"fadeUp 0.6s 0.65s ease both", opacity:0, display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginBottom:48 }}>
           {[
-            { icon: "🌊", label: "Mood Detection" },
-            { icon: "🎧", label: "Ambience Sounds" },
-            { icon: "🐾", label: "Cat Companion" },
-            { icon: "📊", label: "Listening Stats" },
+            { icon:"🌊", label:"Mood Detection" },
+            { icon:"🎧", label:"Ambience Sounds" },
+            { icon:"🐾", label:"Cat Companion" },
+            { icon:"📊", label:"Listening Stats" },
           ].map(f => (
-            <span
-              key={f.label}
-              className="flex items-center gap-1.5 bg-white/70 border border-sand/25 text-muted text-xs font-semibold px-3.5 py-1.5 rounded-full"
-            >
+            <span key={f.label} style={{
+              display:"flex", alignItems:"center", gap:6,
+              background: darkMode ? "rgba(245,200,66,0.08)" : "rgba(255,255,255,0.7)",
+              border:"1px solid rgba(245,200,66,0.25)",
+              color:mid, fontSize:"0.78rem", fontWeight:700,
+              padding:"7px 14px", borderRadius:50,
+            }}>
               {f.icon} {f.label}
             </span>
           ))}
         </div>
 
-        {/* Cards preview strip */}
-        <div className="animate-[fadeUp_0.6s_0.8s_ease_both] opacity-0 mt-16 flex gap-4 flex-wrap justify-center max-w-2xl">
+        {/* Mood cards */}
+        <div style={{ animation:"fadeUp 0.6s 0.8s ease both", opacity:0, display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center" }}>
           {[
-            { mood: "😄", label: "Happy", color: "bg-amber-50 border-amber-200" },
-            { mood: "😌", label: "Calm",  color: "bg-cyan-50  border-cyan-200"  },
-            { mood: "😢", label: "Sad",   color: "bg-indigo-50 border-indigo-200" },
-            { mood: "🎯", label: "Focus", color: "bg-emerald-50 border-emerald-200" },
+            { mood:"😄", label:"Happy",  bg:"#fef9c3", border:"#fde047" },
+            { mood:"😌", label:"Calm",   bg:"#ecfdf5", border:"#6ee7b7" },
+            { mood:"😢", label:"Sad",    bg:"#eff6ff", border:"#93c5fd" },
+            { mood:"🎯", label:"Focus",  bg:"#f0fdf4", border:"#86efac" },
           ].map(m => (
-            <div key={m.label} className={`${m.color} border rounded-2xl px-5 py-3 flex items-center gap-2 shadow-sm`}>
-              <span className="text-xl">{m.mood}</span>
-              <span className="text-xs font-bold text-bark">{m.label}</span>
+            <div key={m.label} style={{
+              background: darkMode ? "rgba(245,200,66,0.08)" : m.bg,
+              border:`1px solid ${darkMode ? "rgba(245,200,66,0.2)" : m.border}`,
+              borderRadius:18, padding:"10px 18px",
+              display:"flex", alignItems:"center", gap:8,
+            }}>
+              <span style={{ fontSize:20 }}>{m.mood}</span>
+              <span style={{ fontSize:"0.8rem", fontWeight:800, color:text }}>{m.label}</span>
             </div>
           ))}
         </div>
-
       </div>
 
-      {/* Fade-in keyframes */}
       <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(18px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Lora:wght@400;600&display=swap');
+        @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes floatA { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-12px) rotate(3deg)} }
+        @keyframes floatB { 0%,100%{transform:translateY(0) rotate(2deg)} 50%{transform:translateY(-9px) rotate(-2deg)} }
       `}</style>
     </div>
   );

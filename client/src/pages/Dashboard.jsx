@@ -222,7 +222,7 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
 
               <div className="cozy-card fi2" style={{ padding:"24px 26px", minHeight:380 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:20 }}>
-                  <div style={{ width:4, height:18, borderRadius:3, background:"linear-gradient(to bottom, #e8a87c, #e8909a)", flexShrink:0 }} />
+                  <div style={{ width:4, height:18, borderRadius:3, background:"linear-gradient(to bottom, #f5c842, #e8a020)", flexShrink:0 }} />
                   <span style={{ fontSize:"0.7rem", fontWeight:800, color:"var(--text-mid)", letterSpacing:"0.08em", textTransform:"uppercase" }}>
                     {TABS.find(t => t.key === activeTab)?.label}
                   </span>

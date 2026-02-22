@@ -14,6 +14,8 @@ function AppLayout() {
   const hideNavbar = ["/login"].includes(location.pathname);
   const isHome = location.pathname === "/";
 
+  const [ready, setReady] = useState(false); // wait for guest token before rendering
+
   const [catMode,      setCatMode]      = useState(false);
   const [catColor,     setCatColor]     = useState("#c4956a");
   const [accessory,    setAccessory]    = useState("none");
@@ -22,12 +24,11 @@ function AppLayout() {
   const [darkMode,     setDarkMode]     = useState(false);
   const [showPlayer,   setShowPlayer]   = useState(false);
 
-  // Auto guest login — runs once on app start
+  // Auto guest login — blocks render until token is ready
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) return; // already logged in (guest or real account)
+    if (token) { setReady(true); return; }
 
-    // Generate or retrieve a stable guest ID for this browser
     let guestId = localStorage.getItem("guestId");
     if (!guestId) {
       guestId = Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -35,25 +36,39 @@ function AppLayout() {
     }
 
     api.post("/auth/guest", { guestId })
-      .then(res => localStorage.setItem("token", res.data.token))
-      .catch(err => console.error("Guest login failed", err));
+      .then(res => {
+        localStorage.setItem("token", res.data.token);
+        setReady(true);
+      })
+      .catch(() => setReady(true)); // still render even if guest login fails
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
-  }, [darkMode]);
+    document.documentElement.classList.toggle("catmode", catMode);
+  }, [darkMode, catMode]);
+
+  if (!ready) return (
+    <div style={{
+      minHeight: "100vh", background: "#fdf6ed",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontFamily: "Nunito, sans-serif", color: "#c4a882", fontSize: "1rem",
+    }}>
+      🐱 Loading...
+    </div>
+  );
 
   const sharedProps = {
     darkMode, setDarkMode, catMode, setCatMode,
     catColor, setCatColor, accessory, setAccessory,
-    platform, setPlatform, showPlayer, setShowPlayer
+    platform, setPlatform, showPlayer, setShowPlayer,
   };
 
   return (
     <>
       {!hideNavbar && <Navbar {...sharedProps} isHome={isHome} />}
       <Routes>
-        <Route path="/"      element={<Home darkMode={darkMode} />} />
+        <Route path="/" element={<Home darkMode={darkMode} catMode={catMode} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/music" element={<Dashboard {...sharedProps} onHappinessChange={setCatHappiness} />} />
         <Route path="/games" element={<Games {...sharedProps} catHappiness={catHappiness} />} />

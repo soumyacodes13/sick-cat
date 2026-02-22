@@ -83,7 +83,7 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
       {/* Album Art */}
       {song.albumArt
         ? <img src={song.albumArt} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-        : <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#e8a87c,#e8909a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎵</div>
+        : <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#f5c842,#e8a020)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎵</div>
       }
 
       {/* Info */}
@@ -126,7 +126,7 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
             padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem", cursor: "pointer",
             border: `1px solid ${playing ? "rgba(232,168,124,0.6)" : "rgba(159,122,234,0.4)"}`,
             background: playing ? "rgba(232,168,124,0.18)" : "rgba(159,122,234,0.1)",
-            color: playing ? "#c4956a" : "#9f7aea",
+            color: playing ? "#92400e" : "#9f7aea",
             fontWeight: 700, transition: "all 0.2s", whiteSpace: "nowrap",
           }}>
             {playing ? "⏸" : "▶"}
@@ -148,8 +148,8 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
           <button onClick={handleSave} disabled={saving} style={{
             padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem",
             cursor: saving ? "not-allowed" : "pointer",
-            border: "1px solid rgba(232,168,124,0.5)", background: "rgba(232,168,124,0.12)",
-            color: "#c4956a", fontWeight: 700, opacity: saving ? 0.5 : 1, transition: "all 0.2s",
+            border: "1px solid rgba(232,168,124,0.5)", background: "rgba(245,200,66,0.12)",
+            color: "#92400e", fontWeight: 700, opacity: saving ? 0.5 : 1, transition: "all 0.2s",
           }}>
             {saving ? "..." : "+ Save"}
           </button>
