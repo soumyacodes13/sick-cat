@@ -68,7 +68,7 @@ function AppLayout() {
     <>
       {!hideNavbar && <Navbar {...sharedProps} isHome={isHome} />}
       <Routes>
-        <Route path="/" element={<Home darkMode={darkMode} catMode={catMode} />} />
+        <Route path="/" element={<Home darkMode={darkMode} catMode={catMode} setCatMode={setCatMode} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/music" element={<Dashboard {...sharedProps} onHappinessChange={setCatHappiness} />} />
         <Route path="/games" element={<Games {...sharedProps} catHappiness={catHappiness} />} />

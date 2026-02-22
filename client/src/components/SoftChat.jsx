@@ -20,11 +20,11 @@ function detectMood(text) {
 }
 
 const MOOD_RESPONSES = {
-  happy: ["Yay! Let me find you some uplifting bangers 🎉", "Happy vibes incoming! 🌟"],
-  calm: ["Soft and peaceful tunes coming up 🍃", "Something gentle for your mood 🌸"],
+  happy: ["Yay! 🎉", "🌟"],
+  calm: ["Soft and peaceful tunes 🍃", "Something gentle for your mood 🌸"],
   sad: ["I've got you 🤍 Here's something for your feelings...", "Music that understands 💙"],
-  chaotic: ["Let's match that energy! ⚡", "Something to match the chaos 🌪️"],
-  focus: ["Time to lock in 🎯 Here's your focus playlist...", "Deep work mode activated 🧠"],
+  chaotic: ["⚡", "Something to match the chaos 🌪️"],
+  focus: ["Wow so much study 🎯 Here's your focus playlist...", "Deep work mode 🧠"],
 };
 
 const MOOD_EMOJI = { happy: "😄", calm: "😌", chaotic: "🌪️", sad: "😢", focus: "🎯" };
@@ -93,7 +93,7 @@ export default function SoftChat({ onSave, onMoodDetected, platform }) {
             How are you feeling today?
           </h3>
           <p style={{ fontSize: "0.72rem", color: "#b8a090", margin: "2px 0 0" }}>
-            Tell me, and I'll find songs that match your vibe
+            I'll find songs for you
           </p>
         </div>
       </div>
@@ -105,7 +105,7 @@ export default function SoftChat({ onSave, onMoodDetected, platform }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="e.g. I'm feeling a bit tired but cozy..."
+            placeholder="e.g. Tired . ."
             rows={2}
             style={{
               flex: 1, resize: "none", borderRadius: 14,

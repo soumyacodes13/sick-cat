@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { useEffect } from "react";
+import Navbar from "../components/Navbar";
+
 
 function Login() {
   const navigate = useNavigate();

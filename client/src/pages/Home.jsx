@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-export default function Home({ darkMode, catMode }) {
+export default function Home({ darkMode, catMode,setCatMode }) {
   const navigate = useNavigate();
 
   const bg   = darkMode ? "#1a1608" : "#fdf9ed";
@@ -34,7 +34,7 @@ export default function Home({ darkMode, catMode }) {
             padding:"8px 18px", borderRadius:50,
           }}>
             <span style={{ width:6, height:6, borderRadius:"50%", background:"#f5c842", display:"inline-block" }} />
-            Your cozy music corner
+            - - -
           </span>
         </div>
 
@@ -47,13 +47,13 @@ export default function Home({ darkMode, catMode }) {
         }}>
           A sunny space for your{" "}
           <span style={{ background:"linear-gradient(135deg, #f5c842, #e8a020)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", backgroundClip:"text" }}>
-            music & memories
+            music
           </span>
         </h1>
 
         {/* Subtext */}
         <p style={{ animation:"fadeUp 0.6s 0.35s ease both", opacity:0, color:mid, fontSize:"1rem", maxWidth:420, lineHeight:1.7, marginBottom:36 }}>
-          Discover songs by mood. Build playlists. Let your cat companion vibe along with you.
+          Pretty mid song player ig
         </p>
 
         {/* CTAs */}
@@ -71,7 +71,7 @@ export default function Home({ darkMode, catMode }) {
           >
             Explore Music 🎧
           </button>
-          <button onClick={() => navigate("/games")} style={{
+          {/* <button onClick={() => navigate("/games")} style={{
             background: darkMode ? "rgba(245,200,66,0.1)" : "rgba(255,255,255,0.8)",
             border:"1.5px solid rgba(245,200,66,0.4)", color:text,
             fontWeight:800, padding:"13px 32px", borderRadius:50, fontSize:"0.92rem",
@@ -82,10 +82,19 @@ export default function Home({ darkMode, catMode }) {
             onMouseLeave={e => e.target.style.transform=""}
           >
             Customize Cat 🐱
+          </button> */}
+          <button onClick={() => setCatMode(v => !v)} style={{
+            background: darkMode ? "rgba(245,200,66,0.1)" : "rgba(255,255,255,0.8)",
+            border:`1.5px solid ${catMode ? "#e8909a" : "rgba(245,200,66,0.4)"}`,
+            color: catMode ? "#e8909a" : text,
+            fontWeight:800, padding:"13px 32px", borderRadius:50, fontSize:"0.92rem",
+            cursor:"pointer", fontFamily:"Nunito, sans-serif",
+            transition:"all 0.2s",}}>
+            {catMode ? "🐱 Cat Mode ON" : "🌻 Cat Mode OFF"}
           </button>
         </div>
 
-        {/* Feature pills */}
+        {/* Feature pills
         <div style={{ animation:"fadeUp 0.6s 0.65s ease both", opacity:0, display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center", marginBottom:48 }}>
           {[
             { icon:"🌊", label:"Mood Detection" },
@@ -103,9 +112,9 @@ export default function Home({ darkMode, catMode }) {
               {f.icon} {f.label}
             </span>
           ))}
-        </div>
+        </div> */}
 
-        {/* Mood cards */}
+        {/* Mood cards
         <div style={{ animation:"fadeUp 0.6s 0.8s ease both", opacity:0, display:"flex", gap:12, flexWrap:"wrap", justifyContent:"center" }}>
           {[
             { mood:"😄", label:"Happy",  bg:"#fef9c3", border:"#fde047" },
@@ -123,7 +132,7 @@ export default function Home({ darkMode, catMode }) {
               <span style={{ fontSize:"0.8rem", fontWeight:800, color:text }}>{m.label}</span>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
 
       <style>{`
