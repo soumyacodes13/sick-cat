@@ -46,7 +46,13 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
   const token     = localStorage.getItem("token");
   const dropRef   = useRef(null);
 
-  const handleLogout = () => { localStorage.removeItem("token"); navigate("/login"); setIsOpen(false); };
+  const isGuest = !localStorage.getItem("token") || !!localStorage.getItem("guestId");
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("guestId");
+    navigate("/login");
+    setIsOpen(false);
+  };
   const isActive = (path) => location.pathname === path;
   const cur = PLATFORM_OPTIONS.find(p => p.value === platform) || PLATFORM_OPTIONS[0];
 
@@ -165,10 +171,12 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
             </div>
           )}
 
-          {token
-            ? <button onClick={handleLogout} style={navBtn()}>Logout</button>
-            : <Link to="/login" style={navBtn()}>Login</Link>
-          }
+          {!isGuest && (
+            <button onClick={handleLogout} style={navBtn()}>Logout</button>
+          )}
+          {isGuest && (
+            <Link to="/login" style={navBtn()}>Login</Link>
+          )}
         </div>
 
         {/* Mobile hamburger */}
@@ -222,7 +230,7 @@ export default function Navbar({ platform, setPlatform, darkMode, setDarkMode, c
             </div>
           )}
 
-          {token
+          {!isGuest
             ? <button onClick={handleLogout} style={navBtn()}>Logout</button>
             : <Link to="/login" onClick={() => setIsOpen(false)} style={navBtn()}>Login</Link>
           }

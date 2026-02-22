@@ -7,7 +7,7 @@ import Games from "./pages/Games";
 import "./index.css";
 import Home from "./pages/Home";
 import Navbar from "./components/Navbar";
-import ProtectedRoute from "./components/ProtectedRoute";
+import api from "./services/api";
 
 function AppLayout() {
   const location = useLocation();
@@ -22,40 +22,41 @@ function AppLayout() {
   const [darkMode,     setDarkMode]     = useState(false);
   const [showPlayer,   setShowPlayer]   = useState(false);
 
-  // Apply dark mode class to <html>
+  // Auto guest login — runs once on app start
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) return; // already logged in (guest or real account)
+
+    // Generate or retrieve a stable guest ID for this browser
+    let guestId = localStorage.getItem("guestId");
+    if (!guestId) {
+      guestId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("guestId", guestId);
+    }
+
+    api.post("/auth/guest", { guestId })
+      .then(res => localStorage.setItem("token", res.data.token))
+      .catch(err => console.error("Guest login failed", err));
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
-  const sharedProps = { darkMode, setDarkMode, catMode, setCatMode, catColor, setCatColor, accessory, setAccessory, platform, setPlatform, showPlayer, setShowPlayer };
+  const sharedProps = {
+    darkMode, setDarkMode, catMode, setCatMode,
+    catColor, setCatColor, accessory, setAccessory,
+    platform, setPlatform, showPlayer, setShowPlayer
+  };
 
   return (
     <>
-      {!hideNavbar && (
-        <Navbar
-          {...sharedProps}
-          isHome={isHome}
-        />
-      )}
+      {!hideNavbar && <Navbar {...sharedProps} isHome={isHome} />}
       <Routes>
         <Route path="/"      element={<Home darkMode={darkMode} />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/music" element={
-          <ProtectedRoute>
-            <Dashboard
-              {...sharedProps}
-              onHappinessChange={setCatHappiness}
-            />
-          </ProtectedRoute>
-        } />
-        <Route path="/games" element={
-          <ProtectedRoute>
-            <Games
-              {...sharedProps}
-              catHappiness={catHappiness}
-            />
-          </ProtectedRoute>
-        } />
+        <Route path="/music" element={<Dashboard {...sharedProps} onHappinessChange={setCatHappiness} />} />
+        <Route path="/games" element={<Games {...sharedProps} catHappiness={catHappiness} />} />
       </Routes>
     </>
   );
