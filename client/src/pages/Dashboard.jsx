@@ -97,7 +97,7 @@ function useCatState(playlist, isPlaying, chatMood, lastAction, inactiveSecs, am
 export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, accessory, setAccessory, onHappinessChange, platform, darkMode, showPlayer, setShowPlayer }) {
   const [playlist, setPlaylist] = useState([]);
   const [playlistLoading, setPlaylistLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] = useState("search");
   const [ambiencePlaying, setAmbiencePlaying] = useState(false);
   const [forceAwake, setForceAwake] = useState(false);
   
@@ -171,8 +171,11 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
   };
 
   const deleteSong = async (id) => {
-    try { await api.delete(`/songs/${id}`); triggerAction("delete"); fetchPlaylist(); }
-    catch (e) { console.error(e); }
+    try {
+      await api.delete(`/songs/${id}`);
+      triggerAction("delete");
+      setPlaylist(prev => prev.filter(s => s._id !== id)); // remove locally
+    } catch (e) { console.error(e); }
   };
 
 const TABS = [
@@ -318,7 +321,7 @@ const TABS = [
               </div> */}
             </div>
 
-            {/* RIGHT: Playlist */}
+            {/* RIGHT: Shared Playlist */}
             <div className="cozy-card fi2" style={{
               padding:"20px", alignSelf:"flex-start",
               position:"sticky", top:"6.5rem",
@@ -326,9 +329,9 @@ const TABS = [
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
                 <div>
-                  <h2 style={{ fontSize:"1rem", fontWeight:800, color:"var(--text)", margin:0 }}>Your Playlist</h2>
+                  <h2 style={{ fontSize:"1rem", fontWeight:800, color:"var(--text)", margin:0 }}>Playlist</h2>
                   <p style={{ fontSize:"0.7rem", color:"var(--text-light)", margin:"2px 0 0" }}>
-                    {playlist.length} song{playlist.length !== 1 ? "s" : ""}
+                    {playlist.length} song{playlist.length !== 1 ? "s" : ""} ·
                   </p>
                 </div>
                 <span style={{ fontSize:22 }}>🎧</span>
@@ -336,12 +339,9 @@ const TABS = [
               <div style={{ height:1, background:"var(--border)", marginBottom:14 }} />
               <PlaylistSection playlist={playlist} onDelete={deleteSong} loading={playlistLoading} platform={platform} />
             </div>
-
           </div>
         </div>
       </div>
     </>
   );
 }
-
-

@@ -136,11 +136,13 @@ export default function AmbiencePlayer({ onPlayingChange }) {
     if (active === key) {
       stopAll();
       setActive(null);
+      onPlayingChange?.(false);
       return;
     }
 
     stopAll();
     setActive(key);
+    onPlayingChange?.(true);
 
     let node;
     if (key === "rain") node = createRainNode(ctx);
@@ -159,7 +161,7 @@ export default function AmbiencePlayer({ onPlayingChange }) {
   }, [volume]);
 
   useEffect(() => {
-    return () => stopAll();
+    return () => { stopAll(); onPlayingChange?.(false); };
   }, []);
 
   return (

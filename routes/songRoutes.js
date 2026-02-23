@@ -52,14 +52,24 @@ router.get("/mood", async (req, res) => {
   }
 });
 
+/* --- SHARED PLAYLIST — all songs from everyone, no auth needed --- */
+router.get("/public", async (req, res) => {
+  try {
+    const songs = await Song.find({})
+      .sort({ createdAt: -1 })
+      .limit(100);
+    res.json(songs);
+  } catch (error) { res.status(500).json({ message: error.message }); }
+});
+
 /* --- SAVE SONG (auth required) --- */
 router.post("/", protect, async (req, res) => {
   try {
     const { title, artist, albumArt, previewUrl, moodTag } = req.body;
     const userId = req.user._id;
 
-    const existing = await Song.findOne({ title, artist, user: userId });
-    if (existing) return res.status(400).json({ message: "Song already saved" });
+    const existing = await Song.findOne({ title, artist });
+    if (existing) return res.status(400).json({ message: "Song already in playlist" });
 
     const newSong = await Song.create({ title, artist, albumArt, previewUrl, moodTag, user: userId });
     res.json(newSong);
@@ -68,10 +78,10 @@ router.post("/", protect, async (req, res) => {
   }
 });
 
-/* --- GET SAVED SONGS (auth required) --- */
+/* --- GET SHARED PLAYLIST — all songs from everyone --- */
 router.get("/", protect, async (req, res) => {
   try {
-    const songs = await Song.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const songs = await Song.find({}).sort({ createdAt: -1 }).limit(100);
     res.json(songs);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -81,7 +91,7 @@ router.get("/", protect, async (req, res) => {
 /* --- DELETE SONG (auth required) --- */
 router.delete("/:id", protect, async (req, res) => {
   try {
-    const song = await Song.findOne({ _id: req.params.id, user: req.user._id });
+    const song = await Song.findById(req.params.id);
     if (!song) return res.status(404).json({ message: "Song not found" });
     await song.deleteOne();
     res.json({ message: "Song deleted successfully" });
