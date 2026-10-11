@@ -51,18 +51,68 @@ function createMockAudio(src = "https://example.com/audio.mp3") {
     src,
     paused: true,
     currentTime: 0,
+    duration: 180,
     playCalls: 0,
     pauseCalls: 0,
+    listeners: new Map(),
+
+    addEventListener(event, callback) {
+      if (!this.listeners.has(event)) {
+        this.listeners.set(event, []);
+      }
+      this.listeners.get(event).push(callback);
+    },
+
+    dispatchEvent(event) {
+      const cbs = this.listeners.get(event) || [];
+      cbs.forEach((cb) => cb());
+    },
+
     play() {
       this.playCalls++;
       this.paused = false;
+      this.dispatchEvent("playing");
       return Promise.resolve();
     },
+
     pause() {
       this.pauseCalls++;
       this.paused = true;
+      this.dispatchEvent("pause");
     },
   };
+}
+
+// Mock MediaSession API
+function setupMockMediaSession() {
+  const actionHandlers = new Map();
+  const mediaSessionMock = {
+    metadata: null,
+    playbackState: "none",
+    positionState: null,
+    setActionHandler(action, handler) {
+      actionHandlers.set(action, handler);
+    },
+    setPositionState(state) {
+      this.positionState = state;
+    },
+  };
+
+  Object.defineProperty(globalThis.navigator, "mediaSession", {
+    value: mediaSessionMock,
+    configurable: true,
+    writable: true,
+  });
+
+  globalThis.window = {
+    MediaMetadata: class {
+      constructor(data) {
+        Object.assign(this, data);
+      }
+    },
+  };
+
+  return actionHandlers;
 }
 
 describe("Single Playback Engine & Audio Coordination (PRD / ytbug.md)", () => {
@@ -83,7 +133,7 @@ describe("Single Playback Engine & Audio Coordination (PRD / ytbug.md)", () => {
     assert.strictEqual(mockPlayer.loadedVideos.length, 1);
     assert.strictEqual(mockPlayer.loadedVideos[0], "yt1");
 
-    // "Opening Now Playing" or navigating must not create or assign a second player
+    // Opening Now Playing or navigating must not create or assign a second player
     const samePlayer = manager.getPlayer();
     assert.strictEqual(samePlayer, mockPlayer);
     assert.strictEqual(mockPlayer.destroyCalls, 0);
@@ -249,5 +299,140 @@ describe("Single Playback Engine & Audio Coordination (PRD / ytbug.md)", () => {
     assert.strictEqual(manager.getState().isPlaying, false);
     assert.strictEqual(manager.getState().playerState, "error");
     assert.match(manager.getState().errorMessage, /cannot be embedded/i);
+  });
+});
+
+describe("Reliable Background Audio & Media Session (Phase 1 & Phase 3 PRD)", () => {
+  let manager;
+  let mockPlayer;
+  let mockAudio;
+  let actionHandlers;
+
+  beforeEach(() => {
+    actionHandlers = setupMockMediaSession();
+    manager = new PlaybackManager();
+    mockPlayer = createMockYTPlayer();
+    mockAudio = createMockAudio();
+    manager.setPlayer(mockPlayer);
+    manager.initAudioElement(mockAudio);
+  });
+
+  test("Phase 1: Direct audio stream plays via HTML5 Audio and populates Media Session metadata", () => {
+    const bgTrack = {
+      _id: "bg-1",
+      title: "Chill Stream",
+      artist: "LoFi Creator",
+      albumArt: "https://example.com/art.jpg",
+      streamUrl: "https://example.com/stream.mp3",
+      playbackProvider: "audio",
+      duration: 300,
+    };
+
+    manager.playTrack(bgTrack);
+
+    // Audio element loaded and played
+    assert.strictEqual(mockAudio.src, "https://example.com/stream.mp3");
+    assert.strictEqual(mockAudio.playCalls, 1);
+    assert.strictEqual(manager.getState().activeProvider, "audio");
+    assert.strictEqual(manager.getState().isPlaying, true);
+
+    // Media Session metadata populated
+    assert.ok(globalThis.navigator.mediaSession.metadata);
+    assert.strictEqual(globalThis.navigator.mediaSession.metadata.title, "Chill Stream");
+    assert.strictEqual(globalThis.navigator.mediaSession.metadata.artist, "LoFi Creator");
+    assert.strictEqual(globalThis.navigator.mediaSession.playbackState, "playing");
+  });
+
+  test("Phase 1: Lock-screen media session actions (play, pause, next, previous, seekto) control playback", () => {
+    const bgTrack = {
+      _id: "bg-2",
+      title: "Meditation",
+      artist: "Ambient",
+      streamUrl: "https://example.com/ambient.mp3",
+      playbackProvider: "audio",
+    };
+
+    let nextTriggered = false;
+    let prevTriggered = false;
+    manager.setOnNext(() => { nextTriggered = true; });
+    manager.setOnPrevious(() => { prevTriggered = true; });
+
+    manager.playTrack(bgTrack);
+
+    // Lock screen Pause action
+    const pauseHandler = actionHandlers.get("pause");
+    assert.ok(pauseHandler);
+    pauseHandler();
+    assert.strictEqual(mockAudio.pauseCalls, 1);
+    assert.strictEqual(globalThis.navigator.mediaSession.playbackState, "paused");
+
+    // Lock screen Play action
+    const playHandler = actionHandlers.get("play");
+    assert.ok(playHandler);
+    playHandler();
+    assert.strictEqual(mockAudio.playCalls, 2);
+    assert.strictEqual(globalThis.navigator.mediaSession.playbackState, "playing");
+
+    // Lock screen Next action
+    const nextHandler = actionHandlers.get("nexttrack");
+    assert.ok(nextHandler);
+    nextHandler();
+    assert.strictEqual(nextTriggered, true);
+
+    // Lock screen Previous action
+    const prevHandler = actionHandlers.get("previoustrack");
+    assert.ok(prevHandler);
+    prevHandler();
+    assert.strictEqual(prevTriggered, true);
+
+    // Lock screen SeekTo action
+    const seekHandler = actionHandlers.get("seekto");
+    assert.ok(seekHandler);
+    seekHandler({ seekTime: 45 });
+    assert.strictEqual(mockAudio.currentTime, 45);
+    assert.strictEqual(manager.getState().currentTime, 45);
+  });
+
+  test("Phase 3: Source exclusivity between Direct Audio and YouTube engines", () => {
+    const bgTrack = {
+      _id: "audio-1",
+      title: "Direct Stream Track",
+      artist: "Audio Artist",
+      streamUrl: "https://example.com/audio.mp3",
+      playbackProvider: "audio",
+    };
+    const ytTrack = {
+      _id: "yt-1",
+      title: "YouTube Video Track",
+      artist: "YT Artist",
+      youtubeVideoId: "yt_video_123",
+      playbackProvider: "youtube",
+    };
+
+    // 1. Start direct audio stream
+    manager.playTrack(bgTrack);
+    assert.strictEqual(manager.getState().activeProvider, "audio");
+    assert.strictEqual(mockAudio.playCalls, 1);
+    assert.strictEqual(mockPlayer.loadedVideos.length, 0);
+
+    // 2. Switch to YouTube track -> must pause direct audio stream!
+    manager.playTrack(ytTrack);
+    assert.strictEqual(mockAudio.pauseCalls, 1);
+    assert.strictEqual(manager.getState().activeProvider, "youtube");
+    assert.strictEqual(mockPlayer.loadedVideos.length, 1);
+    assert.strictEqual(mockPlayer.loadedVideos[0], "yt_video_123");
+
+    // 3. Switch back to direct audio stream -> must stop YouTube video!
+    manager.playTrack(bgTrack);
+    assert.strictEqual(mockPlayer.stopVideoCalls, 1);
+    assert.strictEqual(manager.getState().activeProvider, "audio");
+    assert.strictEqual(mockAudio.playCalls, 2);
+  });
+
+  test("Phase 3: Position state updates sync with MediaSession timeline", () => {
+    manager.updateProgress(120, 360);
+    assert.ok(globalThis.navigator.mediaSession.positionState);
+    assert.strictEqual(globalThis.navigator.mediaSession.positionState.position, 120);
+    assert.strictEqual(globalThis.navigator.mediaSession.positionState.duration, 360);
   });
 });

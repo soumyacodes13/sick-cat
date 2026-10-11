@@ -53,6 +53,40 @@ const DEFAULT_TRENDING = [
   },
 ];
 
+// Permitted full-length direct audio tracks for Android Screen-Off background testing
+const BACKGROUND_PROTOTYPE_TRACKS = [
+  {
+    _id: "proto-1",
+    title: "Starlit Reverie (Screen-Off Prototype)",
+    artist: "SoundHelix • Full Stream",
+    albumArt: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80",
+    moodTag: "Chill",
+    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    playbackProvider: "audio",
+    duration: 372,
+  },
+  {
+    _id: "proto-2",
+    title: "Midnight Confessions (Screen-Off Prototype)",
+    artist: "SoundHelix • Full Stream",
+    albumArt: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=500&auto=format&fit=crop&q=80",
+    moodTag: "R&B",
+    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    playbackProvider: "audio",
+    duration: 425,
+  },
+  {
+    _id: "proto-3",
+    title: "Lost in the Echo (Screen-Off Prototype)",
+    artist: "SoundHelix • Full Stream",
+    albumArt: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=500&auto=format&fit=crop&q=80",
+    moodTag: "Electronic",
+    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    playbackProvider: "audio",
+    duration: 345,
+  },
+];
+
 export default function Dashboard({ platform = "spotify" }) {
   // Navigation tabs: 'discover' (Screen A), 'library' (Screen C), 'search', 'mood', 'profile'
   const [activeNav, setActiveNav] = useState("discover");
@@ -115,9 +149,15 @@ export default function Dashboard({ platform = "spotify" }) {
       setPlaybackState(state);
     });
 
-    // Auto-advance to next song on completion
+    // Auto-advance to next song on completion and media session controls
     playbackManager.setOnTrackEnded(() => {
       handleNextTrack();
+    });
+    playbackManager.setOnNext(() => {
+      handleNextTrack();
+    });
+    playbackManager.setOnPrevious(() => {
+      handlePreviousTrack();
     });
 
     // Fetch initial trending songs from search
@@ -173,6 +213,12 @@ export default function Dashboard({ platform = "spotify" }) {
     if (isSameTrack) {
       // Toggle play/pause without creating duplicate players or restarting track
       playbackManager.togglePlay();
+      return;
+    }
+
+    // Direct background audio streams (Screen-Off capable)
+    if (song.streamUrl || song.audioUrl || song.playbackProvider === "audio") {
+      playbackManager.playTrack(song);
       return;
     }
 
@@ -235,8 +281,14 @@ export default function Dashboard({ platform = "spotify" }) {
     }
   };
 
+  const getActiveList = () => {
+    if (discoverFilter === "screen-off") return BACKGROUND_PROTOTYPE_TRACKS;
+    if (activeNav === "library") return displayLibrarySongs;
+    return playlist.length > 0 ? playlist : trendingSongs;
+  };
+
   const handleNextTrack = () => {
-    const list = playlist.length > 0 ? playlist : trendingSongs;
+    const list = getActiveList();
     const current = playbackManager.activeTrack;
     const currentIndex = list.findIndex(s => s.title === current?.title);
     const nextSong = list[(currentIndex + 1) % list.length];
@@ -244,7 +296,7 @@ export default function Dashboard({ platform = "spotify" }) {
   };
 
   const handlePreviousTrack = () => {
-    const list = playlist.length > 0 ? playlist : trendingSongs;
+    const list = getActiveList();
     const current = playbackManager.activeTrack;
     const currentIndex = list.findIndex(s => s.title === current?.title);
     const prevIndex = currentIndex <= 0 ? list.length - 1 : currentIndex - 1;
@@ -302,6 +354,7 @@ export default function Dashboard({ platform = "spotify" }) {
             }}>
               {[
                 { id: "all", label: "All" },
+                { id: "screen-off", label: "📱 Screen-Off Prototype" },
                 { id: "new-release", label: "New Release" },
                 { id: "trending", label: "Trending" },
                 { id: "top-chart", label: "Top Chart" },
@@ -333,10 +386,10 @@ export default function Dashboard({ platform = "spotify" }) {
                 margin: "0 0 14px", fontSize: "1.08rem", fontWeight: 800,
                 color: "#ffffff", letterSpacing: "-0.01em",
               }}>
-                Curated & trending
+                {discoverFilter === "screen-off" ? "Background Audio Prototype (Android Screen-Off)" : "Curated & trending"}
               </h2>
               <CuratedCard
-                featuredSong={trendingSongs[0]}
+                featuredSong={discoverFilter === "screen-off" ? BACKGROUND_PROTOTYPE_TRACKS[0] : trendingSongs[0]}
                 onPlay={handlePlaySong}
               />
             </div>
@@ -351,7 +404,7 @@ export default function Dashboard({ platform = "spotify" }) {
                   margin: 0, fontSize: "1.08rem", fontWeight: 800,
                   color: "#ffffff", letterSpacing: "-0.01em",
                 }}>
-                  Top daily playlists
+                  {discoverFilter === "screen-off" ? "Permitted Full Streams" : "Top daily playlists"}
                 </h2>
                 <button
                   onClick={() => setActiveNav("library")}
@@ -365,9 +418,9 @@ export default function Dashboard({ platform = "spotify" }) {
               </div>
 
               <ul style={{ padding: 0, margin: 0, listStyle: "none" }}>
-                {trendingSongs.map((song, i) => (
+                {(discoverFilter === "screen-off" ? BACKGROUND_PROTOTYPE_TRACKS : trendingSongs).map((song, i) => (
                   <SongCard
-                    key={i}
+                    key={song._id || i}
                     song={song}
                     onSave={saveSong}
                     platform={platform}

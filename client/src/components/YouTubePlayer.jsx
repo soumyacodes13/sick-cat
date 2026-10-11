@@ -160,7 +160,7 @@ export default function YouTubePlayer({
     };
   }, []);
 
-  if (!track) return null;
+  if (!track || !track.youtubeVideoId || track.playbackProvider === "audio") return null;
 
   const isPiP = !isExpanded || !showVideo;
   const youtubeUrl = videoId
