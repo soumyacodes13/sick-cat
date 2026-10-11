@@ -2,7 +2,14 @@ import { useState } from "react";
 import SongCard from "./SongCard";
 import api from "../services/api";
 
-export default function SearchSection({ onSave, platform }) {
+export default function SearchSection({
+  onSave,
+  platform,
+  onPlay,
+  activeTrack,
+  isPlayingTrack,
+  onChooseVersion,
+}) {
   const [searchTerm, setSearchTerm] = useState("");
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -64,7 +71,18 @@ export default function SearchSection({ onSave, platform }) {
       )}
 
       <ul style={{ padding: 0, margin: 0 }}>
-        {songs.map((song, i) => <SongCard key={i} song={song} onSave={onSave} platform={platform} />)}
+        {songs.map((song, i) => (
+          <SongCard
+            key={i}
+            song={song}
+            onSave={onSave}
+            platform={platform}
+            onPlay={onPlay}
+            activeTrack={activeTrack}
+            isPlayingTrack={isPlayingTrack}
+            onChooseVersion={onChooseVersion}
+          />
+        ))}
       </ul>
       <style>{`@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
     </div>

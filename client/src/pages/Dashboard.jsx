@@ -6,6 +6,8 @@ import CatMascot from "../components/CatMascot";
 import AmbiencePlayer from "../components/AmbiencePlayer";
 import ListeningStats from "../components/ListeningStats";
 import SoftChat from "../components/SoftChat";
+import YouTubePlayer from "../components/YouTubePlayer";
+import YouTubeResults from "../components/YouTubeResults";
 import api from "../services/api";
 
 const COZY_STYLES = `
@@ -102,6 +104,8 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
   const [forceAwake, setForceAwake] = useState(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
+  const [activeTrack, setActiveTrack] = useState(null);
+  const [candidateSong, setCandidateSong] = useState(null);
   const [lastAction, setLastAction] = useState(null);
   const [chatMood, setChatMood] = useState(null);
   const [inactiveSecs, setInactiveSecs] = useState(0);
@@ -165,16 +169,89 @@ export default function Dashboard({ catMode, setCatMode, catColor, setCatColor, 
 
   const saveSong = async (song) => {
     try {
-      await api.post("/songs", { title: song.title, artist: song.artist, albumArt: song.albumArt, previewUrl: song.previewUrl, moodTag: song.moodTag || "" });
+      await api.post("/songs", {
+        title: song.title,
+        artist: song.artist,
+        albumArt: song.albumArt,
+        previewUrl: song.previewUrl,
+        moodTag: song.moodTag || "",
+        youtubeVideoId: song.youtubeVideoId || null,
+        youtubeVideoTitle: song.youtubeVideoTitle || null,
+        youtubeChannelTitle: song.youtubeChannelTitle || null,
+        playbackProvider: song.playbackProvider || "youtube",
+      });
       triggerAction("add"); fetchPlaylist();
     } catch (err) { alert(err.response?.data?.message || "Error saving song"); }
+  };
+
+  const handlePlaySong = async (song) => {
+    setShowPlayer(true);
+
+    if (song.youtubeVideoId) {
+      setActiveTrack(song);
+      return;
+    }
+
+    try {
+      const query = `${song.title || ""} ${song.artist || ""}`.trim();
+      const res = await api.get(`/songs/youtube-search?q=${encodeURIComponent(query)}`);
+      const match = res.data?.[0];
+
+      if (match) {
+        const fullTrack = {
+          ...song,
+          youtubeVideoId: match.videoId,
+          youtubeVideoTitle: match.title,
+          youtubeChannelTitle: match.channelTitle,
+        };
+        setActiveTrack(fullTrack);
+
+        // If legacy saved song, persist YouTube video ID
+        if (song._id) {
+          api.put(`/songs/${song._id}`, {
+            youtubeVideoId: match.videoId,
+            youtubeVideoTitle: match.title,
+            youtubeChannelTitle: match.channelTitle,
+          }).then(() => fetchPlaylist()).catch(e => console.error(e));
+        }
+      } else {
+        setActiveTrack({ ...song, youtubeVideoId: null });
+      }
+    } catch (err) {
+      console.error("Match error:", err);
+      setActiveTrack({ ...song, youtubeVideoId: null });
+    }
+  };
+
+  const handleSelectCandidate = (candidate) => {
+    if (!candidateSong) return;
+    const fullTrack = {
+      ...candidateSong,
+      youtubeVideoId: candidate.videoId,
+      youtubeVideoTitle: candidate.title,
+      youtubeChannelTitle: candidate.channelTitle,
+    };
+    setActiveTrack(fullTrack);
+    setShowPlayer(true);
+    setCandidateSong(null);
+
+    if (candidateSong._id) {
+      api.put(`/songs/${candidateSong._id}`, {
+        youtubeVideoId: candidate.videoId,
+        youtubeVideoTitle: candidate.title,
+        youtubeChannelTitle: candidate.channelTitle,
+      }).then(() => fetchPlaylist()).catch(e => console.error(e));
+    }
   };
 
   const deleteSong = async (id) => {
     try {
       await api.delete(`/songs/${id}`);
       triggerAction("delete");
-      setPlaylist(prev => prev.filter(s => s._id !== id)); // remove locally
+      setPlaylist(prev => prev.filter(s => s._id !== id));
+      if (activeTrack?._id === id) {
+        setActiveTrack(null);
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -239,30 +316,56 @@ const TABS = [
                   </span>
                 </div>
                 {activeTab === "chat"   && <SoftChat onSave={saveSong} onMoodDetected={setChatMood} platform={platform} />}
-                {activeTab === "search" && <SearchSection onSave={saveSong} platform={platform} />}
-                {/* {activeTab === "mood"   && <MoodSection onSave={saveSong} platform={platform} />} */}
+                {activeTab === "search" && (
+                  <SearchSection
+                    onSave={saveSong}
+                    platform={platform}
+                    onPlay={handlePlaySong}
+                    activeTrack={activeTrack}
+                    isPlayingTrack={isPlaying}
+                    onChooseVersion={(s) => setCandidateSong(s)}
+                  />
+                )}
+                {/* {activeTab === "mood"   && (
+                  <MoodSection
+                    onSave={saveSong}
+                    platform={platform}
+                    onPlay={handlePlaySong}
+                    activeTrack={activeTrack}
+                    isPlayingTrack={isPlaying}
+                    onChooseVersion={(s) => setCandidateSong(s)}
+                  />
+                )} */}
               </div>
 
-              
-              {/* Music Player bar - toggleable */}
+              {/* Music Player bar / YouTube Embedded Player */}
               {showPlayer && (
-                <div className="fi3" style={{
-                  background: "var(--card)", border: "1px solid var(--border)",
-                  borderRadius: 16, padding: "14px 18px",
-                  boxShadow: "var(--shadow)",
-                  display: "flex", alignItems: "center", gap: 12,
-                }}>
-                  <span style={{ fontSize: 18 }}>🎵</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ fontSize: "0.72rem", color: "var(--text-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>
-                      Now Playing
-                    </p>
-                    <p style={{ fontSize: "0.82rem", color: "var(--text)", fontWeight: 600, margin: 0 }}>
-                      {playlist.length > 0 ? "Play a song from your playlist ▶" : "Add songs to start listening"}
-                    </p>
+                activeTrack ? (
+                  <YouTubePlayer
+                    track={activeTrack}
+                    onPlayingChange={(playing) => setIsPlaying(playing)}
+                    onClose={() => setShowPlayer(false)}
+                    onFindAlternative={(s) => setCandidateSong(s)}
+                  />
+                ) : (
+                  <div className="fi3" style={{
+                    background: "var(--card)", border: "1px solid var(--border)",
+                    borderRadius: 16, padding: "14px 18px",
+                    boxShadow: "var(--shadow)",
+                    display: "flex", alignItems: "center", gap: 12,
+                  }}>
+                    <span style={{ fontSize: 18 }}>🎵</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: "0.72rem", color: "var(--text-light)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>
+                        Now Playing
+                      </p>
+                      <p style={{ fontSize: "0.82rem", color: "var(--text)", fontWeight: 600, margin: 0 }}>
+                        {playlist.length > 0 ? "Play a song from your playlist ▶" : "Add songs to start listening"}
+                      </p>
+                    </div>
+                    <button onClick={() => setShowPlayer(false)} style={{ background: "none", border: "none", color: "var(--text-light)", cursor: "pointer", fontSize: 16 }}>✕</button>
                   </div>
-                  <button onClick={() => setShowPlayer(false)} style={{ background: "none", border: "none", color: "var(--text-light)", cursor: "pointer", fontSize: 16 }}>✕</button>
-                </div>
+                )
               )}
 
               <div className="fi3"><AmbiencePlayer onPlayingChange={setAmbiencePlaying} /></div>
@@ -337,11 +440,29 @@ const TABS = [
                 <span style={{ fontSize:22 }}>🎧</span>
               </div>
               <div style={{ height:1, background:"var(--border)", marginBottom:14 }} />
-              <PlaylistSection playlist={playlist} onDelete={deleteSong} loading={playlistLoading} platform={platform} />
+              <PlaylistSection
+                playlist={playlist}
+                onDelete={deleteSong}
+                loading={playlistLoading}
+                platform={platform}
+                onPlay={handlePlaySong}
+                activeTrack={activeTrack}
+                isPlayingTrack={isPlaying}
+                onChooseVersion={(s) => setCandidateSong(s)}
+              />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Candidate Version Selector Modal */}
+      {candidateSong && (
+        <YouTubeResults
+          song={candidateSong}
+          onSelect={handleSelectCandidate}
+          onClose={() => setCandidateSong(null)}
+        />
+      )}
     </>
   );
 }

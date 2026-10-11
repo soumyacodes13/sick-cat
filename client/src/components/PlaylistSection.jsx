@@ -1,6 +1,15 @@
 import SongCard from "./SongCard";
 
-export default function PlaylistSection({ playlist, onDelete, loading, platform }) {
+export default function PlaylistSection({
+  playlist,
+  onDelete,
+  loading,
+  platform,
+  onPlay,
+  activeTrack,
+  isPlayingTrack,
+  onChooseVersion,
+}) {
   if (loading) return (
     <div>
       {[1,2,3].map(i => (
@@ -20,7 +29,16 @@ export default function PlaylistSection({ playlist, onDelete, loading, platform 
   return (
     <ul style={{ padding: 0, margin: 0 }}>
       {playlist.map(s => (
-        <SongCard key={s._id} song={s} onDelete={onDelete} platform={platform} />
+        <SongCard
+          key={s._id}
+          song={s}
+          onDelete={onDelete}
+          platform={platform}
+          onPlay={onPlay}
+          activeTrack={activeTrack}
+          isPlayingTrack={isPlayingTrack}
+          onChooseVersion={onChooseVersion}
+        />
       ))}
     </ul>
   );

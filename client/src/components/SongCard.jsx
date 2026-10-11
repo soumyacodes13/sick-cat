@@ -42,10 +42,25 @@ const PLATFORMS = {
   },
 };
 
-export default function SongCard({ song, onSave, onDelete, platform = "spotify" }) {
+export default function SongCard({
+  song,
+  onSave,
+  onDelete,
+  platform = "spotify",
+  onPlay,
+  activeTrack,
+  isPlayingTrack,
+  onChooseVersion,
+}) {
   const [saving, setSaving] = useState(false);
-  const [playing, setPlaying] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
   const audioRef = useRef(null);
+
+  const isActive = activeTrack && (
+    (song._id && activeTrack._id && song._id === activeTrack._id) ||
+    (song.title === activeTrack.title && song.artist === activeTrack.artist)
+  );
+  const isPlayingThis = isActive && isPlayingTrack;
 
   const handleSave = async () => {
     setSaving(true);
@@ -53,17 +68,16 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
     setSaving(false);
   };
 
-  const togglePlay = () => {
+  const togglePreview = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (playing) {
+    if (previewPlaying) {
       audio.pause();
-      setPlaying(false);
+      setPreviewPlaying(false);
     } else {
-      // Pause all other audios on the page first
       document.querySelectorAll("audio").forEach(a => { if (a !== audio) a.pause(); });
       audio.play();
-      setPlaying(true);
+      setPreviewPlaying(true);
     }
   };
 
@@ -73,18 +87,27 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
   return (
     <li style={{
       display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-      borderRadius: 14, background: "var(--card)",
-      border: "1px solid rgba(196,165,140,0.2)", marginBottom: 8, listStyle: "none",
+      borderRadius: 14, background: isActive ? "rgba(232,168,124,0.12)" : "var(--card)",
+      border: `1.5px solid ${isActive ? "rgba(232,168,124,0.6)" : "rgba(196,165,140,0.2)"}`,
+      marginBottom: 8, listStyle: "none",
       transition: "background 0.2s, border-color 0.2s",
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "rgba(196,165,140,0.4)"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "rgba(196,165,140,0.2)"; }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(196,165,140,0.5)"; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = isActive ? "rgba(232,168,124,0.6)" : "rgba(196,165,140,0.2)"; }}
     >
       {/* Album Art */}
-      {song.albumArt
-        ? <img src={song.albumArt} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-        : <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#f5c842,#e8a020)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎵</div>
-      }
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        {song.albumArt
+          ? <img src={song.albumArt} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover" }} />
+          : <div style={{ width: 44, height: 44, borderRadius: 10, background: "linear-gradient(135deg,#f5c842,#e8a020)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎵</div>
+        }
+        {isPlayingThis && (
+          <div style={{
+            position: "absolute", bottom: -2, right: -2, width: 14, height: 14,
+            borderRadius: "50%", background: "#ff0000", border: "2px solid white",
+          }} />
+        )}
+      </div>
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -105,13 +128,13 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
           )}
         </p>
 
-        {/* Hidden audio element — controlled by play button */}
+        {/* Hidden preview audio element */}
         {song.previewUrl && (
           <audio
             ref={audioRef}
             src={song.previewUrl}
-            onEnded={() => setPlaying(false)}
-            onPause={() => setPlaying(false)}
+            onEnded={() => setPreviewPlaying(false)}
+            onPause={() => setPreviewPlaying(false)}
             style={{ display: "none" }}
           />
         )}
@@ -119,55 +142,89 @@ export default function SongCard({ song, onSave, onDelete, platform = "spotify" 
 
       {/* Actions */}
       <div style={{ display: "flex", flexDirection: "column", gap: 5, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 4 }}>
+          {/* Primary Full Play Button (YouTube) */}
+          {onPlay && (
+            <button
+              onClick={() => onPlay(song)}
+              style={{
+                padding: "4px 10px", borderRadius: 20, fontSize: "0.7rem", cursor: "pointer",
+                border: "none",
+                background: isPlayingThis ? "linear-gradient(135deg,#ef4444,#dc2626)" : "linear-gradient(135deg,#e8a87c,#e8909a)",
+                color: "white", fontWeight: 800, transition: "all 0.2s", whiteSpace: "nowrap",
+                boxShadow: "0 2px 8px rgba(232,168,124,0.3)",
+              }}
+              title="Play full song on YouTube"
+            >
+              {isPlayingThis ? "⏸ Playing" : "▶ Play"}
+            </button>
+          )}
 
-        {/* Play / Pause */}
-        {song.previewUrl && (
-          <button onClick={togglePlay} style={{
-            padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem", cursor: "pointer",
-            border: `1px solid ${playing ? "rgba(232,168,124,0.6)" : "rgba(159,122,234,0.4)"}`,
-            background: playing ? "rgba(232,168,124,0.18)" : "rgba(159,122,234,0.1)",
-            color: playing ? "#92400e" : "#9f7aea",
-            fontWeight: 700, transition: "all 0.2s", whiteSpace: "nowrap",
+          {/* Version / Candidate Selector */}
+          {onChooseVersion && (
+            <button
+              onClick={() => onChooseVersion(song)}
+              style={{
+                padding: "4px 8px", borderRadius: 20, fontSize: "0.68rem", cursor: "pointer",
+                border: "1px solid var(--border)", background: "var(--card)",
+                color: "var(--text-mid)", fontWeight: 700,
+              }}
+              title="Choose YouTube video version"
+            >
+              🎬
+            </button>
+          )}
+
+          {/* Optional 30s iTunes Preview */}
+          {song.previewUrl && (
+            <button
+              onClick={togglePreview}
+              style={{
+                padding: "4px 8px", borderRadius: 20, fontSize: "0.68rem", cursor: "pointer",
+                border: "1px solid rgba(196,165,140,0.3)", background: previewPlaying ? "rgba(232,168,124,0.2)" : "transparent",
+                color: previewPlaying ? "#b45309" : "var(--text-light)", fontWeight: 700,
+              }}
+              title="Listen to 30-second iTunes audio preview"
+            >
+              {previewPlaying ? "⏸ Clip" : "🎧 30s"}
+            </button>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 4 }}>
+          {/* Platform link */}
+          <a href={externalUrl} target="_blank" rel="noopener noreferrer" style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
+            padding: "3px 8px", borderRadius: 20, fontSize: "0.68rem", textDecoration: "none",
+            border: `1px solid ${p.border}`, background: p.bg, color: p.color,
+            fontWeight: 700, whiteSpace: "nowrap", flex: 1,
           }}>
-            {playing ? "⏸" : "▶"}
-          </button>
-        )}
+            {p.icon} {p.label}
+          </a>
 
-        {/* Platform link */}
-        <a href={externalUrl} target="_blank" rel="noopener noreferrer" style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-          padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem", textDecoration: "none",
-          border: `1px solid ${p.border}`, background: p.bg, color: p.color,
-          fontWeight: 700, whiteSpace: "nowrap", transition: "all 0.2s",
-        }}>
-          {p.icon} {p.label}
-        </a>
+          {/* Save */}
+          {onSave && (
+            <button onClick={handleSave} disabled={saving} style={{
+              padding: "3px 8px", borderRadius: 20, fontSize: "0.68rem",
+              cursor: saving ? "not-allowed" : "pointer",
+              border: "1px solid rgba(232,168,124,0.5)", background: "rgba(245,200,66,0.12)",
+              color: "#92400e", fontWeight: 700, opacity: saving ? 0.5 : 1,
+            }}>
+              {saving ? "..." : "+ Save"}
+            </button>
+          )}
 
-        {/* Save */}
-        {onSave && (
-          <button onClick={handleSave} disabled={saving} style={{
-            padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem",
-            cursor: saving ? "not-allowed" : "pointer",
-            border: "1px solid rgba(232,168,124,0.5)", background: "rgba(245,200,66,0.12)",
-            color: "#92400e", fontWeight: 700, opacity: saving ? 0.5 : 1, transition: "all 0.2s",
-          }}>
-            {saving ? "..." : "+ Save"}
-          </button>
-        )}
-
-        {/* Delete */}
-        {onDelete && (
-          <button onClick={() => onDelete(song._id)} style={{
-            padding: "4px 11px", borderRadius: 20, fontSize: "0.7rem", cursor: "pointer",
-            border: "1px solid rgba(232,144,154,0.4)", background: "rgba(232,144,154,0.08)",
-            color: "#d08090", fontWeight: 700, transition: "all 0.2s",
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = "rgba(232,144,154,0.2)"}
-            onMouseLeave={e => e.currentTarget.style.background = "rgba(232,144,154,0.08)"}
-          >
-            ✕
-          </button>
-        )}
+          {/* Delete */}
+          {onDelete && (
+            <button onClick={() => onDelete(song._id)} style={{
+              padding: "3px 8px", borderRadius: 20, fontSize: "0.68rem", cursor: "pointer",
+              border: "1px solid rgba(232,144,154,0.4)", background: "rgba(232,144,154,0.08)",
+              color: "#d08090", fontWeight: 700,
+            }}>
+              ✕
+            </button>
+          )}
+        </div>
       </div>
     </li>
   );

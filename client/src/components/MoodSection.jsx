@@ -10,7 +10,14 @@ const MOODS = [
   { key:"focus", label:"Focus", emoji:"🎯", color:"#34d399" },
 ];
 
-export default function MoodSection({ onSave, platform }) {
+export default function MoodSection({
+  onSave,
+  platform,
+  onPlay,
+  activeTrack,
+  isPlayingTrack,
+  onChooseVersion,
+}) {
   const [moodSongs, setMoodSongs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeMood, setActiveMood] = useState(null);
@@ -50,7 +57,18 @@ export default function MoodSection({ onSave, platform }) {
       {!loading && activeMood && moodSongs.length===0 && <p style={{ color:"#c4a882", textAlign:"center", padding:"20px 0" }}>No songs found.</p>}
 
       <ul style={{ padding:0, margin:0 }}>
-        {moodSongs.map((song, i) => <SongCard key={i} song={{ ...song, moodTag:activeMood }} onSave={onSave} platform={platform} />)}
+        {moodSongs.map((song, i) => (
+          <SongCard
+            key={i}
+            song={{ ...song, moodTag: activeMood }}
+            onSave={onSave}
+            platform={platform}
+            onPlay={onPlay}
+            activeTrack={activeTrack}
+            isPlayingTrack={isPlayingTrack}
+            onChooseVersion={onChooseVersion}
+          />
+        ))}
       </ul>
       <style>{`@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
     </div>
