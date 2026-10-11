@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import playbackManager from "../services/playbackManager";
 
 const PLATFORMS = {
   spotify: {
@@ -52,9 +53,11 @@ export default function SongCard({
     if (previewPlaying) {
       audio.pause();
       setPreviewPlaying(false);
+      playbackManager.onPreviewEnd(audio);
     } else {
+      playbackManager.onPreviewStart(audio);
       document.querySelectorAll("audio").forEach(a => { if (a !== audio) a.pause(); });
-      audio.play();
+      audio.play().catch(e => console.error("Audio preview play error:", e));
       setPreviewPlaying(true);
     }
   };
@@ -123,8 +126,14 @@ export default function SongCard({
         <audio
           ref={audioRef}
           src={song.previewUrl}
-          onEnded={() => setPreviewPlaying(false)}
-          onPause={() => setPreviewPlaying(false)}
+          onEnded={() => {
+            setPreviewPlaying(false);
+            playbackManager.onPreviewEnd(audioRef.current);
+          }}
+          onPause={() => {
+            setPreviewPlaying(false);
+            playbackManager.onPreviewEnd(audioRef.current);
+          }}
           style={{ display: "none" }}
         />
       )}

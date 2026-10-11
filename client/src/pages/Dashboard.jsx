@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SearchSection from "../components/SearchSection";
 import MoodSection from "../components/MoodSection";
 import PlaylistSection from "../components/PlaylistSection";
@@ -12,6 +12,7 @@ import YouTubePlayer from "../components/YouTubePlayer";
 import YouTubeResults from "../components/YouTubeResults";
 import SoftChat from "../components/SoftChat";
 import api from "../services/api";
+import playbackManager from "../services/playbackManager";
 
 const DEFAULT_TRENDING = [
   {
@@ -68,12 +69,15 @@ export default function Dashboard({ platform = "spotify" }) {
   const [trendingSongs, setTrendingSongs] = useState(DEFAULT_TRENDING);
   const [playlistLoading, setPlaylistLoading] = useState(false);
 
-  // Playback states
-  const [activeTrack, setActiveTrack] = useState(DEFAULT_TRENDING[0]);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // Playback states synchronized with centralized playbackManager
+  const [playbackState, setPlaybackState] = useState(() => playbackManager.getState());
   const [showNowPlaying, setShowNowPlaying] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [candidateSong, setCandidateSong] = useState(null);
+  const searchRequestIdRef = useRef(0);
+
+  const activeTrack = playbackState.activeTrack || DEFAULT_TRENDING[0];
+  const isPlaying = playbackState.isPlaying;
 
   const fetchPlaylist = async () => {
     try {
@@ -100,6 +104,22 @@ export default function Dashboard({ platform = "spotify" }) {
     fetchPlaylist();
     fetchPublicPlaylist();
 
+    // Initialize default active track if empty
+    if (!playbackManager.activeTrack) {
+      playbackManager.activeTrack = DEFAULT_TRENDING[0];
+      playbackManager.notify();
+    }
+
+    // Subscribe to playback engine
+    const unsubscribe = playbackManager.subscribe((state) => {
+      setPlaybackState(state);
+    });
+
+    // Auto-advance to next song on completion
+    playbackManager.setOnTrackEnded(() => {
+      handleNextTrack();
+    });
+
     // Fetch initial trending songs from search
     api.get("/songs/search?q=indie chill")
       .then(res => {
@@ -108,6 +128,8 @@ export default function Dashboard({ platform = "spotify" }) {
         }
       })
       .catch(() => {});
+
+    return unsubscribe;
   }, []);
 
   const saveSong = async (song) => {
@@ -134,7 +156,7 @@ export default function Dashboard({ platform = "spotify" }) {
       await api.delete(`/songs/${id}`);
       setPlaylist(prev => prev.filter(s => s._id !== id));
       if (activeTrack?._id === id) {
-        setIsPlaying(false);
+        playbackManager.destroy();
       }
     } catch (e) {
       console.error(e);
@@ -142,24 +164,31 @@ export default function Dashboard({ platform = "spotify" }) {
   };
 
   const handlePlaySong = async (song) => {
-    if (activeTrack && ((song._id && song._id === activeTrack._id) || (song.title === activeTrack.title && song.artist === activeTrack.artist))) {
-      // Toggle play/pause if same track
-      setIsPlaying(p => !p);
+    const currentTrack = playbackManager.activeTrack;
+    const isSameTrack = currentTrack && (
+      (song._id && currentTrack._id && song._id === currentTrack._id) ||
+      (song.title === currentTrack.title && song.artist === currentTrack.artist)
+    );
+
+    if (isSameTrack) {
+      // Toggle play/pause without creating duplicate players or restarting track
+      playbackManager.togglePlay();
       return;
     }
 
     if (song.youtubeVideoId) {
-      setActiveTrack(song);
-      setIsPlaying(true);
+      playbackManager.playTrack(song);
       return;
     }
 
-    // Match via YouTube Data API
+    // Match via YouTube Data API with race condition protection
+    const currentReq = ++searchRequestIdRef.current;
     try {
       const query = `${song.title || ""} ${song.artist || ""}`.trim();
       const res = await api.get(`/songs/youtube-search?q=${encodeURIComponent(query)}`);
-      const match = res.data?.[0];
+      if (currentReq !== searchRequestIdRef.current) return; // Stale request, discard
 
+      const match = res.data?.[0];
       if (match) {
         const fullTrack = {
           ...song,
@@ -167,8 +196,7 @@ export default function Dashboard({ platform = "spotify" }) {
           youtubeVideoTitle: match.title,
           youtubeChannelTitle: match.channelTitle,
         };
-        setActiveTrack(fullTrack);
-        setIsPlaying(true);
+        playbackManager.playTrack(fullTrack);
 
         if (song._id) {
           api.put(`/songs/${song._id}`, {
@@ -178,13 +206,12 @@ export default function Dashboard({ platform = "spotify" }) {
           }).then(() => fetchPlaylist()).catch(e => console.error(e));
         }
       } else {
-        setActiveTrack({ ...song, youtubeVideoId: null });
-        setIsPlaying(true);
+        playbackManager.playTrack({ ...song, youtubeVideoId: null });
       }
     } catch (err) {
+      if (currentReq !== searchRequestIdRef.current) return;
       console.error("Match error:", err);
-      setActiveTrack({ ...song, youtubeVideoId: null });
-      setIsPlaying(true);
+      playbackManager.playTrack({ ...song, youtubeVideoId: null });
     }
   };
 
@@ -196,8 +223,7 @@ export default function Dashboard({ platform = "spotify" }) {
       youtubeVideoTitle: candidate.title,
       youtubeChannelTitle: candidate.channelTitle,
     };
-    setActiveTrack(fullTrack);
-    setIsPlaying(true);
+    playbackManager.playTrack(fullTrack);
     setCandidateSong(null);
 
     if (candidateSong._id) {
@@ -211,14 +237,16 @@ export default function Dashboard({ platform = "spotify" }) {
 
   const handleNextTrack = () => {
     const list = playlist.length > 0 ? playlist : trendingSongs;
-    const currentIndex = list.findIndex(s => s.title === activeTrack?.title);
+    const current = playbackManager.activeTrack;
+    const currentIndex = list.findIndex(s => s.title === current?.title);
     const nextSong = list[(currentIndex + 1) % list.length];
     if (nextSong) handlePlaySong(nextSong);
   };
 
   const handlePreviousTrack = () => {
     const list = playlist.length > 0 ? playlist : trendingSongs;
-    const currentIndex = list.findIndex(s => s.title === activeTrack?.title);
+    const current = playbackManager.activeTrack;
+    const currentIndex = list.findIndex(s => s.title === current?.title);
     const prevIndex = currentIndex <= 0 ? list.length - 1 : currentIndex - 1;
     const prevSong = list[prevIndex];
     if (prevSong) handlePlaySong(prevSong);
@@ -504,20 +532,24 @@ export default function Dashboard({ platform = "spotify" }) {
       </div>
 
       {/* ══════════════════════════════════════════════════
-          BACKGROUND YOUTUBE AUDIO ENGINE
-          (Keeps playing continuously across screens!)
+          SINGLE AUTHORITATIVE YOUTUBE PLAYER INSTANCE
+          (Never duplicated; transitions seamlessly between PiP and expanded)
          ══════════════════════════════════════════════════ */}
       {activeTrack && (
-        <div style={{
-          position: "fixed", bottom: -9999, left: -9999, opacity: 0, pointerEvents: "none",
-        }}>
-          <YouTubePlayer
-            track={activeTrack}
-            onPlayingChange={(p) => setIsPlaying(p)}
-            onClose={() => {}}
-            onFindAlternative={(s) => setCandidateSong(s)}
-          />
-        </div>
+        <YouTubePlayer
+          track={activeTrack}
+          isExpanded={showNowPlaying}
+          showVideo={showVideo}
+          onToggleVideo={() => setShowVideo(v => !v)}
+          onExpand={() => {
+            setShowNowPlaying(true);
+            setShowVideo(true);
+          }}
+          onClose={() => {
+            playbackManager.destroy();
+          }}
+          onFindAlternative={(s) => setCandidateSong(s)}
+        />
       )}
 
       {/* ══════════════════════════════════════════════════
@@ -527,7 +559,7 @@ export default function Dashboard({ platform = "spotify" }) {
         <MiniPlayer
           track={activeTrack}
           isPlaying={isPlaying}
-          onTogglePlay={() => setIsPlaying(p => !p)}
+          onTogglePlay={() => playbackManager.togglePlay()}
           onNext={handleNextTrack}
           onExpand={() => setShowNowPlaying(true)}
         />
@@ -540,21 +572,16 @@ export default function Dashboard({ platform = "spotify" }) {
         <NowPlayingScreen
           track={activeTrack}
           isPlaying={isPlaying}
-          onTogglePlay={() => setIsPlaying(p => !p)}
+          onTogglePlay={() => playbackManager.togglePlay()}
           onPrevious={handlePreviousTrack}
           onNext={handleNextTrack}
           onClose={() => setShowNowPlaying(false)}
           onChooseVersion={(s) => setCandidateSong(s)}
           showVideo={showVideo}
           onToggleVideo={() => setShowVideo(v => !v)}
-          youtubePlayerElement={
-            <YouTubePlayer
-              track={activeTrack}
-              onPlayingChange={(p) => setIsPlaying(p)}
-              onClose={() => setShowVideo(false)}
-              onFindAlternative={(s) => setCandidateSong(s)}
-            />
-          }
+          currentTime={playbackState.currentTime}
+          duration={playbackState.duration}
+          onSeek={(seconds) => playbackManager.seekTo(seconds)}
         />
       )}
 

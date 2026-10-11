@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import playbackManager from "../services/playbackManager";
 
-// Safe script loader for YouTube IFrame API
+// Safe script loader for YouTube IFrame API (single promise)
+let apiPromise = null;
 function loadYouTubeAPI() {
-  return new Promise((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve(window.YT);
-      return;
-    }
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
+  if (apiPromise) return apiPromise;
 
+  apiPromise = new Promise((resolve) => {
     const existingScript = document.getElementById("youtube-iframe-api-script");
     if (!existingScript) {
       const tag = document.createElement("script");
@@ -18,36 +19,70 @@ function loadYouTubeAPI() {
 
     const prevCallback = window.onYouTubeIframeAPIReady;
     window.onYouTubeIframeAPIReady = () => {
-      if (prevCallback) prevCallback();
+      if (prevCallback) {
+        try {
+          prevCallback();
+        } catch {
+          // Ignored
+        }
+      }
       resolve(window.YT);
     };
   });
+  return apiPromise;
 }
 
-export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindAlternative, isPlaying, onTogglePlay }) {
+export default function YouTubePlayer({
+  track,
+  isExpanded = false,
+  showVideo = true,
+  onToggleVideo,
+  onExpand,
+  onClose,
+  onFindAlternative,
+}) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
-  const [playerState, setPlayerState] = useState("loading"); // loading, ready, playing, paused, error
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [showVideo, setShowVideo] = useState(true);
+  const [playbackState, setPlaybackState] = useState(() => playbackManager.getState());
+  const progressTimerRef = useRef(null);
+  const currentVideoIdRef = useRef(track?.youtubeVideoId);
 
   const videoId = track?.youtubeVideoId;
 
+  // Keep currentVideoIdRef in sync via effect, avoiding ref write during render
+  useEffect(() => {
+    currentVideoIdRef.current = videoId;
+  }, [videoId]);
+
+  // Subscribe to playbackManager state updates
+  useEffect(() => {
+    const unsubscribe = playbackManager.subscribe((state) => {
+      setPlaybackState(state);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Initialize or update the YouTube player instance
   useEffect(() => {
     let isMounted = true;
     if (!videoId) return;
 
-    setErrorMessage(null);
-    setPlayerState("loading");
-
     loadYouTubeAPI().then((YT) => {
-      if (!isMounted || !containerRef.current) return;
+      if (!isMounted || !containerRef.current || !YT) return;
 
+      // If player already exists, load new video instead of destroying and recreating
       if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch (e) { console.error(e); }
-        playerRef.current = null;
+        try {
+          if (typeof playerRef.current.loadVideoById === "function") {
+            playerRef.current.loadVideoById(videoId);
+          }
+        } catch (e) {
+          console.error("Error loading video in existing player:", e);
+        }
+        return;
       }
 
+      // Initialize the ONE player instance
       try {
         const player = new YT.Player(containerRef.current, {
           videoId,
@@ -58,195 +93,176 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
             playsinline: 1,
           },
           events: {
-            onReady: () => {
+            onReady: (event) => {
               if (!isMounted) return;
-              setPlayerState("ready");
+              // If video changed while initializing, load latest
+              if (currentVideoIdRef.current && currentVideoIdRef.current !== videoId) {
+                event.target.loadVideoById(currentVideoIdRef.current);
+              }
             },
             onStateChange: (event) => {
               if (!isMounted) return;
-              if (event.data === YT.PlayerState.PLAYING) {
-                setPlayerState("playing");
-                onPlayingChange?.(true);
-              } else if (event.data === YT.PlayerState.PAUSED) {
-                setPlayerState("paused");
-                onPlayingChange?.(false);
-              } else if (event.data === YT.PlayerState.ENDED) {
-                setPlayerState("ready");
-                onPlayingChange?.(false);
-              } else if (event.data === YT.PlayerState.BUFFERING) {
-                setPlayerState("buffering");
-              }
+              playbackManager.handleYTStateChange(event.data, YT);
             },
             onError: (event) => {
               if (!isMounted) return;
-              onPlayingChange?.(false);
-              if (event.data === 101 || event.data === 150) {
-                setErrorMessage("This video cannot be embedded on external sites by request of the creator.");
-              } else if (event.data === 100) {
-                setErrorMessage("This video is unavailable or has been removed.");
-              } else {
-                setErrorMessage("Unable to play video on this device.");
-              }
-              setPlayerState("error");
+              playbackManager.handleYTError(event.data);
             },
           },
         });
+
         playerRef.current = player;
+        playbackManager.setPlayer(player);
       } catch (err) {
         console.error("Failed to initialize YouTube player:", err);
-        setErrorMessage("Error initializing player.");
-        setPlayerState("error");
+        playbackManager.handleYTError(999);
       }
     });
 
     return () => {
-      isMounted = false;
-      onPlayingChange?.(false);
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch (e) { console.error(e); }
-        playerRef.current = null;
-      }
+      // Intentionally keep player alive across screen navigation to prevent duplicate re-initialization
     };
   }, [videoId]);
 
-  const togglePlayPause = () => {
-    if (!playerRef.current) return;
-    try {
-      if (playerState === "playing") {
-        playerRef.current.pauseVideo();
-      } else {
-        playerRef.current.playVideo();
+  // Track progress polling while playing
+  useEffect(() => {
+    if (playbackState.isPlaying) {
+      progressTimerRef.current = setInterval(() => {
+        if (playerRef.current && typeof playerRef.current.getCurrentTime === "function") {
+          try {
+            const current = playerRef.current.getCurrentTime() || 0;
+            const dur = playerRef.current.getDuration() || 0;
+            playbackManager.updateProgress(current, dur);
+          } catch {
+            // Ignored
+          }
+        }
+      }, 500);
+    } else {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
       }
-    } catch (e) { console.error(e); }
-  };
+    }
+    return () => {
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current);
+        progressTimerRef.current = null;
+      }
+    };
+  }, [playbackState.isPlaying]);
 
+  // On genuine component unmount
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      playbackManager.destroy();
+    };
+  }, []);
+
+  if (!track) return null;
+
+  const isPiP = !isExpanded || !showVideo;
   const youtubeUrl = videoId
     ? `https://www.youtube.com/watch?v=${videoId}`
     : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track?.title || ""} ${track?.artist || ""}`)}`;
 
-  if (!track) return null;
+  const styleExpanded = {
+    position: "fixed",
+    top: 76,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "min(360px, calc(100vw - 48px))",
+    zIndex: 105,
+    borderRadius: 20,
+    background: "#161122",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
+    boxShadow: "0 14px 40px rgba(0, 0, 0, 0.7)",
+    overflow: "hidden",
+    transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+  };
+
+  const stylePiP = {
+    position: "fixed",
+    bottom: 154,
+    right: 18,
+    width: "min(170px, 42vw)",
+    zIndex: 48,
+    borderRadius: 12,
+    background: "#161122",
+    border: "1px solid rgba(255, 255, 255, 0.18)",
+    boxShadow: "0 8px 24px rgba(0, 0, 0, 0.6)",
+    overflow: "hidden",
+    cursor: "pointer",
+    transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+  };
 
   return (
-    <div style={{
-      background: "#161122", border: "1px solid rgba(255, 255, 255, 0.1)",
-      borderRadius: 20, padding: "16px 18px",
-      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
-      marginBottom: 20, transition: "all 0.3s ease",
-    }}>
-      {/* Top bar: Track info and controls */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: showVideo && !errorMessage ? 14 : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-          <img
-            src={track.albumArt || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100&auto=format&fit=crop&q=80"}
-            alt=""
-            style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }}
-          />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#d2f83d", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
-                ▶ YouTube Live
-              </span>
-              {playerState === "buffering" && <span style={{ fontSize: "0.68rem", color: "#948ea1" }}>· Buffering…</span>}
-              {playerState === "loading" && <span style={{ fontSize: "0.68rem", color: "#948ea1" }}>· Connecting…</span>}
-            </div>
-            <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "0.88rem", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {track.title || "Unknown Song"}
-            </p>
-            <p style={{ color: "#948ea1", fontSize: "0.74rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {track.artist || "Unknown Artist"}
-            </p>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          {!errorMessage && (
-            <button onClick={togglePlayPause} style={{
-              width: 36, height: 36, borderRadius: "50%",
-              border: "none", cursor: "pointer",
-              background: "#d2f83d", color: "#000000",
-              fontSize: 14, fontWeight: 900,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 3px 10px rgba(210, 248, 61, 0.35)",
-              transition: "transform 0.15s",
-            }}
-              title={playerState === "playing" ? "Pause" : "Play"}
-            >
-              {playerState === "playing" ? "⏸" : "▶"}
-            </button>
-          )}
-
-          <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
-            padding: "5px 12px", borderRadius: 9999, fontSize: "0.7rem", fontWeight: 700,
-            textDecoration: "none", border: "1px solid rgba(255, 255, 255, 0.15)",
-            background: "rgba(255, 255, 255, 0.08)", color: "#ffffff",
-            display: "flex", alignItems: "center", gap: 4,
-          }}
-            title="Open on YouTube"
-          >
-            ↗ YouTube
-          </a>
-
-          {!errorMessage && (
-            <button onClick={() => setShowVideo(v => !v)} style={{
-              background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: 9999, padding: "5px 10px", fontSize: "0.68rem",
-              color: "#948ea1", cursor: "pointer", fontWeight: 700,
-            }}>
-              {showVideo ? "Hide Video" : "Show Video"}
-            </button>
-          )}
-
-          {onClose && (
-            <button onClick={onClose} style={{
-              background: "none", border: "none",
-              color: "#948ea1", cursor: "pointer", fontSize: 16,
-              padding: "4px 6px",
-            }}>
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Error state with fallback */}
-      {errorMessage && (
+    <div style={isPiP ? stylePiP : styleExpanded} onClick={isPiP ? onExpand : undefined}>
+      {/* Header bar only when expanded */}
+      {!isPiP && (
         <div style={{
-          marginTop: 10, padding: "14px 16px", borderRadius: 14,
-          background: "rgba(244, 63, 94, 0.1)", border: "1px solid rgba(244, 63, 94, 0.25)",
-          color: "#fecdd3", fontSize: "0.8rem",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 14px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+          background: "rgba(255, 255, 255, 0.03)",
         }}>
-          <p style={{ margin: "0 0 10px", fontWeight: 700 }}>⚠️ {errorMessage}</p>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
-              padding: "6px 14px", borderRadius: 9999, background: "#f43f5e",
-              color: "#ffffff", textDecoration: "none", fontWeight: 800, fontSize: "0.74rem",
-            }}>
-              Open on YouTube Directly ↗
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#d2f83d", letterSpacing: "0.06em" }}>
+              ▶ YOUTUBE LIVE
+            </span>
+            {playbackState.playerState === "buffering" && (
+              <span style={{ fontSize: "0.68rem", color: "#948ea1" }}>· Buffering…</span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <a
+              href={youtubeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: "3px 9px", borderRadius: 9999, fontSize: "0.65rem", fontWeight: 700,
+                textDecoration: "none", border: "1px solid rgba(255, 255, 255, 0.15)",
+                background: "rgba(255, 255, 255, 0.08)", color: "#ffffff",
+              }}
+            >
+              ↗ YouTube
             </a>
-            {onFindAlternative && (
-              <button onClick={() => onFindAlternative(track)} style={{
-                padding: "6px 14px", borderRadius: 9999, background: "rgba(255, 255, 255, 0.1)",
-                border: "1px solid rgba(255, 255, 255, 0.2)", color: "#ffffff",
-                cursor: "pointer", fontWeight: 700, fontSize: "0.74rem",
-              }}>
-                Choose Another Version 🔄
+            {onToggleVideo && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleVideo();
+                }}
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: 9999, padding: "3px 8px", fontSize: "0.65rem",
+                  color: "#948ea1", cursor: "pointer", fontWeight: 700,
+                }}
+              >
+                Minimize
+              </button>
+            )}
+            {onClose && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                style={{
+                  background: "none", border: "none", color: "#948ea1",
+                  cursor: "pointer", fontSize: "0.8rem", padding: "2px 6px",
+                }}
+                title="Close Player"
+              >
+                ✕
               </button>
             )}
           </div>
         </div>
       )}
 
-      {/* Official YouTube embedded iframe container */}
-      <div style={{
-        display: showVideo && !errorMessage ? "block" : "none",
-        position: "relative",
-        paddingTop: "56.25%", // 16:9 Aspect Ratio
-        borderRadius: 14,
-        overflow: "hidden",
-        background: "#000000",
-        marginTop: 6,
-      }}>
+      {/* 16:9 Video Container with YouTube IFrame */}
+      <div style={{ position: "relative", paddingTop: "56.25%", background: "#000000" }}>
         <div
           ref={containerRef}
           style={{
@@ -257,7 +273,55 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
             height: "100%",
           }}
         />
+
+        {/* PiP expand pill overlay when in mini corner mode */}
+        {isPiP && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onExpand?.();
+            }}
+            style={{
+              position: "absolute", top: 4, right: 4,
+              background: "rgba(0,0,0,0.75)", color: "#d2f83d",
+              fontSize: "0.65rem", fontWeight: 800, padding: "2px 6px",
+              borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 3,
+              border: "1px solid rgba(210, 248, 61, 0.3)",
+              backdropFilter: "blur(4px)",
+            }}
+            title="Expand Video"
+          >
+            ↖ Maximize
+          </div>
+        )}
       </div>
+
+      {/* Error notification banner if video cannot be embedded */}
+      {playbackState.errorMessage && !isPiP && (
+        <div style={{
+          padding: "10px 14px", background: "rgba(244, 63, 94, 0.12)",
+          borderTop: "1px solid rgba(244, 63, 94, 0.25)", color: "#fecdd3", fontSize: "0.75rem",
+        }}>
+          <p style={{ margin: "0 0 8px", fontWeight: 700 }}>⚠️ {playbackState.errorMessage}</p>
+          <div style={{ display: "flex", gap: 6 }}>
+            <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
+              padding: "4px 10px", borderRadius: 9999, background: "#f43f5e",
+              color: "#ffffff", textDecoration: "none", fontWeight: 800, fontSize: "0.7rem",
+            }}>
+              Open on YouTube ↗
+            </a>
+            {onFindAlternative && (
+              <button onClick={() => onFindAlternative(track)} style={{
+                padding: "4px 10px", borderRadius: 9999, background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.2)", color: "#ffffff",
+                cursor: "pointer", fontWeight: 700, fontSize: "0.7rem",
+              }}>
+                Choose Another Version 🔄
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,12 @@
 import { useState } from "react";
 
+function formatTime(sec) {
+  if (!sec || isNaN(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s < 10 ? "0" : ""}${s}`;
+}
+
 export default function NowPlayingScreen({
   track,
   isPlaying,
@@ -10,7 +17,9 @@ export default function NowPlayingScreen({
   onChooseVersion,
   showVideo,
   onToggleVideo,
-  youtubePlayerElement,
+  currentTime = 0,
+  duration = 0,
+  onSeek,
 }) {
   const [liked, setLiked] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
@@ -21,6 +30,8 @@ export default function NowPlayingScreen({
   const youtubeUrl = track.youtubeVideoId
     ? `https://www.youtube.com/watch?v=${track.youtubeVideoId}`
     : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.title || ""} ${track.artist || ""}`)}`;
+
+  const progressPercent = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
     <div style={{
@@ -72,7 +83,7 @@ export default function NowPlayingScreen({
         display: "flex", flexDirection: "column", alignItems: "center", flex: 1,
         justifyContent: "space-between", gap: 20,
       }}>
-        {/* Centered Artwork with Ambient Glow OR Embedded Video */}
+        {/* Centered Artwork with Ambient Glow OR Video slot */}
         <div style={{ position: "relative", width: "100%", display: "flex", justifyContent: "center", margin: "10px 0" }}>
           {/* Ambient backlight glow */}
           <div style={{
@@ -83,9 +94,14 @@ export default function NowPlayingScreen({
           }} />
 
           {showVideo ? (
-            <div style={{ width: "100%", maxWidth: 360, borderRadius: 24, overflow: "hidden", zIndex: 1, boxShadow: "0 14px 40px rgba(0,0,0,0.6)" }}>
-              {youtubePlayerElement}
-            </div>
+            /* Layout placeholder for YouTubePlayer which is anchored at zIndex 105 */
+            <div style={{
+              width: "min(360px, calc(100vw - 48px))",
+              aspectRatio: "16/9",
+              borderRadius: 20,
+              visibility: "hidden",
+              zIndex: 1,
+            }} />
           ) : (
             <div style={{
               width: 240, height: 240, borderRadius: "50%",
@@ -161,13 +177,21 @@ export default function NowPlayingScreen({
 
         {/* Scrubber / Progress timeline */}
         <div style={{ width: "100%", zIndex: 1, padding: "0 8px" }}>
-          <div style={{
-            position: "relative", height: 5, borderRadius: 5,
-            background: "rgba(255, 255, 255, 0.15)", overflow: "visible",
-            display: "flex", alignItems: "center", cursor: "pointer",
-          }}>
+          <div
+            onClick={(e) => {
+              if (!duration || !onSeek) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              onSeek(pct * duration);
+            }}
+            style={{
+              position: "relative", height: 5, borderRadius: 5,
+              background: "rgba(255, 255, 255, 0.15)", overflow: "visible",
+              display: "flex", alignItems: "center", cursor: "pointer",
+            }}
+          >
             <div style={{
-              width: "35%", height: "100%", borderRadius: 5,
+              width: `${progressPercent}%`, height: "100%", borderRadius: 5,
               background: "#d2f83d", position: "relative",
             }}>
               <div style={{
@@ -181,8 +205,8 @@ export default function NowPlayingScreen({
             display: "flex", justifyContent: "space-between", marginTop: 8,
             fontSize: "0.72rem", color: "#8a8397", fontWeight: 600,
           }}>
-            <span>0:28</span>
-            <span>-2:15</span>
+            <span>{formatTime(currentTime)}</span>
+            <span>{duration > 0 ? formatTime(duration) : "-:--"}</span>
           </div>
         </div>
 
