@@ -18,58 +18,100 @@ export default function SearchSection({
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
     try {
-      setLoading(true); setHasSearched(true);
+      setLoading(true);
+      setHasSearched(true);
       const res = await api.get(`/songs/search?q=${encodeURIComponent(searchTerm)}`);
-      setSongs(res.data);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      setSongs(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-        <input
-          style={{
-            flex: 1, background: "rgba(255,255,255,0.8)", border: "1.5px solid rgba(196,165,140,0.3)",
-            borderRadius: 50, padding: "0 18px", height: 44, fontSize: "0.85rem", color: "#7c6a5e",
-            outline: "none", fontFamily: "Nunito,sans-serif", transition: "border-color 0.2s",
-          }}
-          placeholder="Search songs or artists..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleSearch()}
-          onFocus={e => e.target.style.borderColor = "#e8a87c"}
-          onBlur={e => e.target.style.borderColor = "rgba(196,165,140,0.3)"}
-        />
-        <button onClick={handleSearch} disabled={loading || !searchTerm.trim()} style={{
-          padding: "0 20px", height: 44, borderRadius: 50, border: "none",
-          background: loading || !searchTerm.trim() ? "rgba(232,168,124,0.3)" : "linear-gradient(135deg,#e8a87c,#e8909a)",
-          color: "white", fontWeight: 800, fontSize: "0.82rem",
-          cursor: loading || !searchTerm.trim() ? "not-allowed" : "pointer",
-          boxShadow: loading ? "none" : "0 4px 14px rgba(232,168,124,0.35)",
-          fontFamily: "Nunito,sans-serif",
+      {/* Search Input Bar */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <div style={{
+          flex: 1, position: "relative", display: "flex", alignItems: "center",
         }}>
-          {loading ? "..." : "🔍"}
+          <span style={{
+            position: "absolute", left: 18, color: "rgba(255, 255, 255, 0.4)",
+            fontSize: 16, pointerEvents: "none",
+          }}>
+            🔍
+          </span>
+          <input
+            style={{
+              width: "100%", background: "rgba(255, 255, 255, 0.06)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: 9999, padding: "0 18px 0 46px", height: 46,
+              fontSize: "0.88rem", color: "#ffffff", outline: "none",
+              fontFamily: "inherit", transition: "all 0.2s ease",
+            }}
+            placeholder="Search songs, artists, or albums..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSearch()}
+            onFocus={e => {
+              e.target.style.borderColor = "#d2f83d";
+              e.target.style.background = "rgba(255, 255, 255, 0.09)";
+            }}
+            onBlur={e => {
+              e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+              e.target.style.background = "rgba(255, 255, 255, 0.06)";
+            }}
+          />
+        </div>
+
+        <button
+          onClick={handleSearch}
+          disabled={loading || !searchTerm.trim()}
+          style={{
+            padding: "0 22px", height: 46, borderRadius: 9999, border: "none",
+            background: loading || !searchTerm.trim() ? "rgba(255, 255, 255, 0.1)" : "#d2f83d",
+            color: loading || !searchTerm.trim() ? "rgba(255, 255, 255, 0.4)" : "#000000",
+            fontWeight: 800, fontSize: "0.85rem",
+            cursor: loading || !searchTerm.trim() ? "not-allowed" : "pointer",
+            boxShadow: loading || !searchTerm.trim() ? "none" : "0 4px 14px rgba(210, 248, 61, 0.35)",
+            fontFamily: "inherit", transition: "all 0.2s ease",
+          }}
+        >
+          {loading ? "…" : "Search"}
         </button>
       </div>
 
-      {loading && [1, 2, 3].map(i => (
-        <div key={i} style={{ height: 64, borderRadius: 14, background: "rgba(255,255,255,0.5)", marginBottom: 8, animation: "pulse 1.4s ease-in-out infinite" }} />
+      {/* Loading Skeleton */}
+      {loading && [1, 2, 3, 4].map(i => (
+        <div
+          key={i}
+          style={{
+            height: 64, borderRadius: 16, background: "rgba(255, 255, 255, 0.04)",
+            marginBottom: 8, animation: "pulseGlow 1.4s ease-in-out infinite",
+          }}
+        />
       ))}
 
+      {/* Empty State after search */}
       {!loading && hasSearched && songs.length === 0 && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#c4a882" }}>
+        <div style={{ textAlign: "center", padding: "40px 0", color: "#948ea1" }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🎵</div>
-          <p>No songs found for "{searchTerm}"</p>
+          <p style={{ margin: 0, fontSize: "0.9rem", fontWeight: 600 }}>No songs found for "{searchTerm}"</p>
+          <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#6b6577" }}>Try searching for a different artist or song name.</p>
         </div>
       )}
 
+      {/* Default placeholder */}
       {!hasSearched && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "#c4a882" }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🎧</div>
-          <p style={{ fontSize: "0.82rem" }}>Type a song or artist and press Enter</p>
+        <div style={{ textAlign: "center", padding: "36px 0", color: "#948ea1" }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🎧</div>
+          <p style={{ margin: 0, fontSize: "0.85rem", fontWeight: 600 }}>Find your favorite songs</p>
+          <p style={{ margin: "4px 0 0", fontSize: "0.76rem", color: "#6b6577" }}>Type a title or artist to discover music</p>
         </div>
       )}
 
+      {/* Results list */}
       <ul style={{ padding: 0, margin: 0 }}>
         {songs.map((song, i) => (
           <SongCard
@@ -84,7 +126,6 @@ export default function SearchSection({
           />
         ))}
       </ul>
-      <style>{`@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:.9} }`}</style>
     </div>
   );
 }

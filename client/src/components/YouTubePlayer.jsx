@@ -8,7 +8,6 @@ function loadYouTubeAPI() {
       return;
     }
 
-    // If script is already inserted, wait for callback
     const existingScript = document.getElementById("youtube-iframe-api-script");
     if (!existingScript) {
       const tag = document.createElement("script");
@@ -25,7 +24,7 @@ function loadYouTubeAPI() {
   });
 }
 
-export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindAlternative }) {
+export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindAlternative, isPlaying, onTogglePlay }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const [playerState, setPlayerState] = useState("loading"); // loading, ready, playing, paused, error
@@ -44,7 +43,6 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
     loadYouTubeAPI().then((YT) => {
       if (!isMounted || !containerRef.current) return;
 
-      // Clean up previous player instance if any
       if (playerRef.current) {
         try { playerRef.current.destroy(); } catch (e) { console.error(e); }
         playerRef.current = null;
@@ -66,7 +64,6 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
             },
             onStateChange: (event) => {
               if (!isMounted) return;
-              // YT.PlayerState: PLAYING (1), PAUSED (2), ENDED (0), BUFFERING (3)
               if (event.data === YT.PlayerState.PLAYING) {
                 setPlayerState("playing");
                 onPlayingChange?.(true);
@@ -83,11 +80,6 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
             onError: (event) => {
               if (!isMounted) return;
               onPlayingChange?.(false);
-              // Error codes:
-              // 2: Invalid video ID
-              // 5: HTML5 player error
-              // 100: Video not found or private
-              // 101, 150: Embedding disabled by owner
               if (event.data === 101 || event.data === 150) {
                 setErrorMessage("This video cannot be embedded on external sites by request of the creator.");
               } else if (event.data === 100) {
@@ -128,42 +120,39 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
     } catch (e) { console.error(e); }
   };
 
-  const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track?.title || ""} ${track?.artist || ""}`)}`;
+  const youtubeUrl = videoId
+    ? `https://www.youtube.com/watch?v=${videoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track?.title || ""} ${track?.artist || ""}`)}`;
 
   if (!track) return null;
 
   return (
-    <div className="cozy-card fi3" style={{
-      background: "var(--card)", border: "1.5px solid var(--border)",
-      borderRadius: 18, padding: "16px 18px",
-      boxShadow: "0 6px 20px rgba(180,140,40,0.12)",
-      marginBottom: 16, transition: "all 0.3s ease",
+    <div style={{
+      background: "#161122", border: "1px solid rgba(255, 255, 255, 0.1)",
+      borderRadius: 20, padding: "16px 18px",
+      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
+      marginBottom: 20, transition: "all 0.3s ease",
     }}>
       {/* Top bar: Track info and controls */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: showVideo && !errorMessage ? 12 : 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: showVideo && !errorMessage ? 14 : 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
-          {track.albumArt ? (
-            <img src={track.albumArt} alt="" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-          ) : (
-            <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "linear-gradient(135deg,#ff0000,#cc0000)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 18 }}>
-              ▶
-            </div>
-          )}
+          <img
+            src={track.albumArt || "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=100&auto=format&fit=crop&q=80"}
+            alt=""
+            style={{ width: 44, height: 44, borderRadius: 12, objectFit: "cover", flexShrink: 0 }}
+          />
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#ff0000", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
-                <svg width="12" height="10" viewBox="0 0 24 24" fill="#ff0000">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-                YouTube Playback
+              <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "#d2f83d", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4 }}>
+                ▶ YouTube Live
               </span>
-              {playerState === "buffering" && <span style={{ fontSize: "0.68rem", color: "var(--text-light)" }}>· Buffering...</span>}
-              {playerState === "loading" && <span style={{ fontSize: "0.68rem", color: "var(--text-light)" }}>· Connecting...</span>}
+              {playerState === "buffering" && <span style={{ fontSize: "0.68rem", color: "#948ea1" }}>· Buffering…</span>}
+              {playerState === "loading" && <span style={{ fontSize: "0.68rem", color: "#948ea1" }}>· Connecting…</span>}
             </div>
-            <p style={{ color: "var(--text)", fontWeight: 800, fontSize: "0.88rem", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "0.88rem", margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {track.title || "Unknown Song"}
             </p>
-            <p style={{ color: "var(--text-light)", fontSize: "0.74rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <p style={{ color: "#948ea1", fontSize: "0.74rem", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {track.artist || "Unknown Artist"}
             </p>
           </div>
@@ -175,10 +164,10 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
             <button onClick={togglePlayPause} style={{
               width: 36, height: 36, borderRadius: "50%",
               border: "none", cursor: "pointer",
-              background: "linear-gradient(135deg, #e8a87c, #e8909a)",
-              color: "white", fontSize: 14, fontWeight: 800,
+              background: "#d2f83d", color: "#000000",
+              fontSize: 14, fontWeight: 900,
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 3px 10px rgba(232,168,124,0.35)",
+              boxShadow: "0 3px 10px rgba(210, 248, 61, 0.35)",
               transition: "transform 0.15s",
             }}
               title={playerState === "playing" ? "Pause" : "Play"}
@@ -188,9 +177,9 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
           )}
 
           <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
-            padding: "5px 10px", borderRadius: 20, fontSize: "0.7rem", fontWeight: 700,
-            textDecoration: "none", border: "1px solid rgba(255,0,0,0.3)",
-            background: "rgba(255,0,0,0.06)", color: "#e11d48",
+            padding: "5px 12px", borderRadius: 9999, fontSize: "0.7rem", fontWeight: 700,
+            textDecoration: "none", border: "1px solid rgba(255, 255, 255, 0.15)",
+            background: "rgba(255, 255, 255, 0.08)", color: "#ffffff",
             display: "flex", alignItems: "center", gap: 4,
           }}
             title="Open on YouTube"
@@ -200,9 +189,9 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
 
           {!errorMessage && (
             <button onClick={() => setShowVideo(v => !v)} style={{
-              background: "none", border: "1px solid var(--border)",
-              borderRadius: 20, padding: "4px 8px", fontSize: "0.68rem",
-              color: "var(--text-mid)", cursor: "pointer", fontWeight: 700,
+              background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: 9999, padding: "5px 10px", fontSize: "0.68rem",
+              color: "#948ea1", cursor: "pointer", fontWeight: 700,
             }}>
               {showVideo ? "Hide Video" : "Show Video"}
             </button>
@@ -211,7 +200,7 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
           {onClose && (
             <button onClick={onClose} style={{
               background: "none", border: "none",
-              color: "var(--text-light)", cursor: "pointer", fontSize: 16,
+              color: "#948ea1", cursor: "pointer", fontSize: 16,
               padding: "4px 6px",
             }}>
               ✕
@@ -223,23 +212,23 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
       {/* Error state with fallback */}
       {errorMessage && (
         <div style={{
-          marginTop: 10, padding: "12px 14px", borderRadius: 12,
-          background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
-          color: "#b91c1c", fontSize: "0.78rem",
+          marginTop: 10, padding: "14px 16px", borderRadius: 14,
+          background: "rgba(244, 63, 94, 0.1)", border: "1px solid rgba(244, 63, 94, 0.25)",
+          color: "#fecdd3", fontSize: "0.8rem",
         }}>
-          <p style={{ margin: "0 0 8px", fontWeight: 700 }}>⚠️ {errorMessage}</p>
+          <p style={{ margin: "0 0 10px", fontWeight: 700 }}>⚠️ {errorMessage}</p>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <a href={youtubeUrl} target="_blank" rel="noopener noreferrer" style={{
-              padding: "5px 12px", borderRadius: 20, background: "#ef4444",
-              color: "white", textDecoration: "none", fontWeight: 800, fontSize: "0.72rem",
+              padding: "6px 14px", borderRadius: 9999, background: "#f43f5e",
+              color: "#ffffff", textDecoration: "none", fontWeight: 800, fontSize: "0.74rem",
             }}>
-              Listen on YouTube Directly ↗
+              Open on YouTube Directly ↗
             </a>
             {onFindAlternative && (
               <button onClick={() => onFindAlternative(track)} style={{
-                padding: "5px 12px", borderRadius: 20, background: "var(--card)",
-                border: "1px solid var(--border)", color: "var(--text)",
-                cursor: "pointer", fontWeight: 700, fontSize: "0.72rem",
+                padding: "6px 14px", borderRadius: 9999, background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.2)", color: "#ffffff",
+                cursor: "pointer", fontWeight: 700, fontSize: "0.74rem",
               }}>
                 Choose Another Version 🔄
               </button>
@@ -255,7 +244,7 @@ export default function YouTubePlayer({ track, onPlayingChange, onClose, onFindA
         paddingTop: "56.25%", // 16:9 Aspect Ratio
         borderRadius: 14,
         overflow: "hidden",
-        background: "#000",
+        background: "#000000",
         marginTop: 6,
       }}>
         <div

@@ -27,103 +27,105 @@ export default function YouTubeResults({ song, onSelect, onClose }) {
 
   return (
     <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      background: "rgba(0, 0, 0, 0.5)", backdropFilter: "blur(4px)",
+      position: "fixed", inset: 0,
+      background: "rgba(0, 0, 0, 0.75)", backdropFilter: "blur(12px)",
+      WebkitBackdropFilter: "blur(12px)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 1000, padding: 16,
+      zIndex: 200, padding: 16, animation: "fadeIn 0.2s ease-out",
     }}
       onClick={onClose}
     >
       <div style={{
-        background: "var(--card)", border: "1.5px solid var(--border)",
-        borderRadius: 20, maxWidth: 480, width: "100%", maxHeight: "80vh",
+        background: "#161122", border: "1px solid rgba(255, 255, 255, 0.12)",
+        borderRadius: 24, maxWidth: 460, width: "100%", maxHeight: "80vh",
         display: "flex", flexDirection: "column", overflow: "hidden",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+        boxShadow: "0 24px 60px rgba(0, 0, 0, 0.8)",
       }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div style={{
-          padding: "16px 20px", borderBottom: "1px solid var(--border)",
+          padding: "18px 22px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 800, color: "var(--text)" }}>
-              Choose YouTube Version
+            <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#ffffff" }}>
+              Choose Video Version
             </h3>
-            <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-light)" }}>
-              for "{song.title}" by {song.artist}
+            <p style={{ margin: "3px 0 0", fontSize: "0.75rem", color: "#948ea1" }}>
+              "{song.title}" • {song.artist}
             </p>
           </div>
           <button onClick={onClose} style={{
-            background: "none", border: "none", color: "var(--text-light)",
-            fontSize: 18, cursor: "pointer", padding: "4px 8px",
+            background: "rgba(255, 255, 255, 0.08)", border: "none", color: "rgba(255, 255, 255, 0.7)",
+            fontSize: 16, cursor: "pointer", width: 32, height: 32, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             ✕
           </button>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: "14px 18px", overflowY: "auto", flex: 1 }}>
+        {/* Content list */}
+        <div style={{ padding: "16px 20px", overflowY: "auto", flex: 1 }}>
           {loading && (
-            <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-light)", fontSize: "0.85rem" }}>
-              🔍 Finding matching videos on YouTube...
+            <div style={{ textAlign: "center", padding: "36px 0", color: "#948ea1", fontSize: "0.85rem" }}>
+              🔍 Searching YouTube for eligible versions…
             </div>
           )}
 
           {error && (
-            <div style={{ textAlign: "center", padding: "20px 0", color: "#e11d48", fontSize: "0.8rem" }}>
+            <div style={{ textAlign: "center", padding: "24px 0", color: "#f43f5e", fontSize: "0.82rem" }}>
               {error}
             </div>
           )}
 
           {!loading && !error && candidates.length === 0 && (
-            <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-light)", fontSize: "0.85rem" }}>
+            <div style={{ textAlign: "center", padding: "36px 0", color: "#948ea1", fontSize: "0.85rem" }}>
               No matches found.
             </div>
           )}
 
           {!loading && !error && (
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
               {candidates.map((item) => (
                 <li
                   key={item.videoId}
                   onClick={() => onSelect(item)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 12, padding: "8px 10px",
-                    borderRadius: 14, background: "rgba(255,255,255,0.4)",
-                    border: "1px solid var(--border)", cursor: "pointer",
-                    transition: "all 0.2s ease",
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 12px",
+                    borderRadius: 16, background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.06)", cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#e8a87c";
-                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.borderColor = "#d2f83d";
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "var(--border)";
-                    e.currentTarget.style.transform = "none";
+                    e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.06)";
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
                   }}
                 >
                   <img
                     src={item.thumbnailUrl}
                     alt=""
-                    style={{ width: 64, height: 44, borderRadius: 8, objectFit: "cover", flexShrink: 0 }}
+                    style={{ width: 68, height: 46, borderRadius: 10, objectFit: "cover", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
-                      margin: 0, fontSize: "0.8rem", fontWeight: 700, color: "var(--text)",
+                      margin: 0, fontSize: "0.82rem", fontWeight: 700, color: "#ffffff",
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
                       {item.title}
                     </p>
-                    <p style={{ margin: "2px 0 0", fontSize: "0.7rem", color: "var(--text-light)" }}>
+                    <p style={{ margin: "2px 0 0", fontSize: "0.72rem", color: "#948ea1" }}>
                       {item.channelTitle}
                     </p>
                   </div>
                   <button style={{
-                    padding: "4px 10px", borderRadius: 20, fontSize: "0.7rem",
-                    fontWeight: 700, background: "linear-gradient(135deg,#e8a87c,#e8909a)",
-                    color: "white", border: "none", cursor: "pointer", flexShrink: 0,
+                    padding: "5px 12px", borderRadius: 9999, fontSize: "0.72rem",
+                    fontWeight: 800, background: "#d2f83d", color: "#000000",
+                    border: "none", cursor: "pointer", flexShrink: 0,
                   }}>
                     Play ▶
                   </button>
